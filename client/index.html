@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1" />
+    <title>AgencyCRM - מערכת CRM מתקדמת לסוכנויות דיגיטליות</title>
+    <meta name="description" content="מערכת CRM מקצועית לסוכנויות דיגיטליות עם תמיכה מלאה בעברית וממשק מותאם לשוק הישראלי. נהלו לקוחות, פרויקטים ומשימות במקום אחד.">
+    <link href="https://fonts.googleapis.com/css2?family=Assistant:wght@300;400;500;600;700&family=Rubik:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+
+    <!-- Facebook SDK -->
+    <script async defer crossorigin="anonymous" 
+            src="https://connect.facebook.net/he_IL/sdk.js#xfbml=1&version=v18.0&appId=1234567890123456"></script>
+
+    <!-- Google APIs -->
+    <script src="https://apis.google.com/js/api.js"></script>
+
+    <script>
+      // Initialize Facebook SDK
+      window.fbAsyncInit = function() {
+        FB.init({
+          appId: '1234567890123456',
+          cookie: true,
+          xfbml: true,
+          version: 'v18.0'
+        });
+      };
+    </script>
+  </head>
+  <body>
+    <div id="root"></div>
+    <script type="module" src="/src/main.tsx"></script>
+    <!-- This is a replit script which adds a banner on the top of the page when opened in development mode outside the replit environment -->
+    <script type="text/javascript" src="https://replit.com/public/js/replit-dev-banner.js"></script>
+  </body>
+</html>
