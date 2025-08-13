@@ -9,7 +9,7 @@ import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { Eye, EyeOff } from "lucide-react";
 import { FcGoogle } from "react-icons/fc";
-import { signInWithPopup, signInWithRedirect, getRedirectResult, GoogleAuthProvider } from "firebase/auth";
+import { getRedirectResult, GoogleAuthProvider } from "firebase/auth";
 import { auth } from "@/lib/firebase";
 
 export default function Login() {
@@ -23,6 +23,7 @@ export default function Login() {
     rememberMe: false,
   });
   const [showPassword, setShowPassword] = useState(false);
+  const [isGoogleLogin, setIsGoogleLogin] = useState(false);
 
   // Redirect if already logged in
   useEffect(() => {
@@ -49,8 +50,12 @@ export default function Login() {
         });
 
         if (!response.ok) return;
+        console.log('✅ Google redirect login successful, redirecting to dashboard...');
         toast({ title: "התחברת עם Google", description: "ברוך השב" });
-        setLocation('/dashboard');
+        setTimeout(() => {
+          console.log('🔄 Executing redirect from Google redirect result...');
+          setLocation('/dashboard');
+        }, 500);
       } catch {}
     })();
   }, [setLocation, toast]);
@@ -101,51 +106,32 @@ export default function Login() {
     });
   };
 
-  const handleGoogleLogin = async () => {
-    try {
-      const provider = new GoogleAuthProvider();
-      const result = await signInWithPopup(auth, provider);
-      const credential = GoogleAuthProvider.credentialFromResult(result);
-      const idToken = credential?.idToken;
-
-      if (!idToken) {
-        throw new Error('לא התקבל טוקן מ-Google');
-      }
-
-      const response = await fetch('/api/auth/google', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        credentials: 'include',
-        body: JSON.stringify({ idToken }),
-      });
-
-      if (!response.ok) {
-        const text = await response.text();
-        try {
-          const parsed = JSON.parse(text);
-          throw new Error(parsed.message || 'שגיאה בהתחברות עם Google');
-        } catch {
-          throw new Error('שגיאה בהתחברות עם Google');
-        }
-      }
-
-      toast({ title: "התחברת עם Google", description: "ברוך השב" });
-      setLocation('/dashboard');
-    } catch (error: any) {
-      // Fallback to redirect if popup is blocked or not supported
-      if (error?.code === 'auth/popup-blocked' || error?.code === 'auth/operation-not-supported-in-this-environment') {
-        try {
-          const provider = new GoogleAuthProvider();
-          await signInWithRedirect(auth, provider);
-          return;
-        } catch (redirectErr: any) {
-          toast({ title: "שגיאה בהתחברות עם Google", description: redirectErr?.message || 'נסה שוב', variant: 'destructive' });
-          return;
-        }
-      }
-      toast({ title: "שגיאה בהתחברות עם Google", description: error?.message || 'נסה שוב', variant: 'destructive' });
-    }
+  const handleGoogleLogin = () => {
+    console.log('🔄 Starting Google login via useAuth hook...');
+    setIsGoogleLogin(true);
+    loginWithGoogle();
   };
+
+  // Handle successful Google login
+  useEffect(() => {
+    if (user && isGoogleLogin && !isGoogleLoginLoading) {
+      console.log('✅ User state updated after Google login, redirecting to dashboard...');
+      toast({ title: "התחברת עם Google", description: "ברוך השב" });
+      setTimeout(() => {
+        console.log('🔄 Executing redirect to dashboard...');
+        setLocation('/dashboard');
+        setIsGoogleLogin(false); // Reset flag
+      }, 500);
+    }
+  }, [user, isGoogleLogin, isGoogleLoginLoading, setLocation, toast]);
+
+  // Handle Google login errors
+  useEffect(() => {
+    if (googleLoginError) {
+      console.log('❌ Google login error:', googleLoginError);
+      setIsGoogleLogin(false); // Reset flag on error
+    }
+  }, [googleLoginError]);
 
   return (
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-bl from-blue-50 to-white p-4" dir="rtl">

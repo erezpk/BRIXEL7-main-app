@@ -73,9 +73,97 @@ export const passwordResetTokens = sqliteTable("password_reset_tokens", {
   createdAt: integer("created_at").$defaultFn(() => Date.now()).notNull(),
 });
 
+// Clients
+export const clients = sqliteTable("clients", {
+  id: text("id").primaryKey().$defaultFn(() => globalThis.crypto?.randomUUID() || Math.random().toString(36)),
+  agencyId: text("agency_id").notNull().references(() => agencies.id),
+  name: text("name").notNull(),
+  contactName: text("contact_name"),
+  email: text("email"),
+  phone: text("phone"),
+  industry: text("industry"),
+  status: text("status").default("active").notNull(),
+  notes: text("notes"),
+  customFields: text("custom_fields", { mode: 'json' }).default('{}'),
+  createdAt: integer("created_at").$defaultFn(() => Date.now()).notNull(),
+  updatedAt: integer("updated_at").$defaultFn(() => Date.now()).notNull(),
+});
+
+// Projects
+export const projects = sqliteTable("projects", {
+  id: text("id").primaryKey().$defaultFn(() => globalThis.crypto?.randomUUID() || Math.random().toString(36)),
+  agencyId: text("agency_id").notNull().references(() => agencies.id),
+  clientId: text("client_id").references(() => clients.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: text("type"),
+  status: text("status").default("planning").notNull(),
+  priority: text("priority").default("medium").notNull(),
+  startDate: text("start_date"), // ISO date string
+  endDate: text("end_date"), // ISO date string
+  budget: integer("budget"),
+  assignedTo: text("assigned_to").references(() => users.id),
+  createdBy: text("created_by").notNull().references(() => users.id),
+  createdAt: integer("created_at").$defaultFn(() => Date.now()).notNull(),
+  updatedAt: integer("updated_at").$defaultFn(() => Date.now()).notNull(),
+});
+
+// Leads
+export const leads = sqliteTable("leads", {
+  id: text("id").primaryKey().$defaultFn(() => globalThis.crypto?.randomUUID() || Math.random().toString(36)),
+  agencyId: text("agency_id").notNull().references(() => agencies.id),
+  name: text("name").notNull(),
+  email: text("email"),
+  phone: text("phone"),
+  source: text("source"),
+  status: text("status").default("new").notNull(),
+  notes: text("notes"),
+  createdAt: integer("created_at").$defaultFn(() => Date.now()).notNull(),
+  updatedAt: integer("updated_at").$defaultFn(() => Date.now()).notNull(),
+});
+
+// Products
+export const products = sqliteTable("products", {
+  id: text("id").primaryKey().$defaultFn(() => globalThis.crypto?.randomUUID() || Math.random().toString(36)),
+  agencyId: text("agency_id").notNull().references(() => agencies.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  price: integer("price"),
+  category: text("category"),
+  isActive: integer("is_active", { mode: 'boolean' }).default(true).notNull(),
+  createdAt: integer("created_at").$defaultFn(() => Date.now()).notNull(),
+  updatedAt: integer("updated_at").$defaultFn(() => Date.now()).notNull(),
+});
+
+// Quotes
+export const quotes = sqliteTable("quotes", {
+  id: text("id").primaryKey().$defaultFn(() => globalThis.crypto?.randomUUID() || Math.random().toString(36)),
+  agencyId: text("agency_id").notNull().references(() => agencies.id),
+  clientId: text("client_id").references(() => clients.id),
+  quoteNumber: text("quote_number").notNull(),
+  status: text("status").default("draft").notNull(),
+  total: integer("total").notNull(),
+  validUntil: text("valid_until"), // ISO date string
+  notes: text("notes"),
+  createdBy: text("created_by").notNull().references(() => users.id),
+  createdAt: integer("created_at").$defaultFn(() => Date.now()).notNull(),
+  updatedAt: integer("updated_at").$defaultFn(() => Date.now()).notNull(),
+});
+
 // Export all types
 export type Agency = typeof agencies.$inferSelect;
 export type InsertAgency = typeof agencies.$inferInsert;
 export type User = typeof users.$inferSelect;
 export type InsertUser = typeof users.$inferInsert;
 export type UpsertUser = Partial<InsertUser> & { id?: string };
+
+export type Client = typeof clients.$inferSelect;
+export type InsertClient = typeof clients.$inferInsert;
+export type Project = typeof projects.$inferSelect;
+export type InsertProject = typeof projects.$inferInsert;
+export type Lead = typeof leads.$inferSelect;
+export type InsertLead = typeof leads.$inferInsert;
+export type Product = typeof products.$inferSelect;
+export type InsertProduct = typeof products.$inferInsert;
+export type Quote = typeof quotes.$inferSelect;
+export type InsertQuote = typeof quotes.$inferInsert;
