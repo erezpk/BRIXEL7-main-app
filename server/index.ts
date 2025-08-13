@@ -1,10 +1,23 @@
+import dotenv from "dotenv";
+import path from "path";
+
+// Configure dotenv with explicit path to ensure it loads from project root
+const envPath = path.resolve(process.cwd(), '.env');
+console.log('🔍 Loading .env from:', envPath);
+const result = dotenv.config({ path: envPath });
+
+if (result.error) {
+  console.error('❌ Failed to load .env file:', result.error);
+} else {
+  console.log('✅ Environment variables loaded successfully');
+  console.log('🔍 GOOGLE_CLIENT_ID loaded:', process.env.GOOGLE_CLIENT_ID ? 'YES' : 'NO');
+}
+
 import express, { type Request, Response, NextFunction } from "express";
 import cors from "cors";
 import session from "express-session";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import dotenv from "dotenv";
-dotenv.config();
 
 const app = express();
 app.use(cors({

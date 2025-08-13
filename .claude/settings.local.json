@@ -4,7 +4,8 @@
       "Bash(docker:*)",
       "Bash(npm run:*)",
       "Bash(rm:*)",
-      "Bash(npx kill-port:*)"
+      "Bash(npx kill-port:*)",
+      "Bash(curl:*)"
     ],
     "deny": [],
     "ask": []

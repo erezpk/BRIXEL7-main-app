@@ -333,6 +333,193 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Dashboard API endpoints
+  app.get('/api/dashboard/activity', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      // Get recent activity for the agency
+      // TODO: Implement activityLog table in SQLite schema
+      const activities = []; // Empty array for now since we're using SQLite
+      res.json(activities);
+    } catch (error) {
+      console.error("Error fetching activity:", error);
+      res.status(500).json({ message: "Failed to fetch activity" });
+    }
+  });
+
+  app.get('/api/dashboard/stats', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      // Return basic stats (you can expand this based on your needs)
+      const stats = {
+        totalClients: 0,
+        totalProjects: 0,
+        totalTasks: 0,
+        totalLeads: 0
+      };
+
+      res.json(stats);
+    } catch (error) {
+      console.error("Error fetching stats:", error);
+      res.status(500).json({ message: "Failed to fetch stats" });
+    }
+  });
+
+  // Basic CRUD endpoints
+  app.get('/api/projects', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const projects = await storage.getProjectsByAgency(user.agencyId);
+      res.json(projects);
+    } catch (error) {
+      console.error("Error fetching projects:", error);
+      res.status(500).json([]);
+    }
+  });
+
+  app.get('/api/clients', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const clients = await storage.getClientsByAgency(user.agencyId);
+      res.json(clients);
+    } catch (error) {
+      console.error("Error fetching clients:", error);
+      res.status(500).json([]);
+    }
+  });
+
+  app.post('/api/clients', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const clientData = {
+        ...req.body,
+        agencyId: user.agencyId
+      };
+
+      const client = await storage.createClient(clientData);
+      res.json(client);
+    } catch (error) {
+      console.error("Error creating client:", error);
+      res.status(500).json({ message: "Failed to create client" });
+    }
+  });
+
+  app.get('/api/leads', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const leads = await storage.getLeadsByAgency(user.agencyId);
+      res.json(leads);
+    } catch (error) {
+      console.error("Error fetching leads:", error);
+      res.status(500).json([]);
+    }
+  });
+
+  app.get('/api/products', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const products = await storage.getProductsByAgency(user.agencyId);
+      res.json(products);
+    } catch (error) {
+      console.error("Error fetching products:", error);
+      res.status(500).json([]);
+    }
+  });
+
+  app.get('/api/quotes', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const quotes = await storage.getQuotesByAgency(user.agencyId);
+      res.json(quotes);
+    } catch (error) {
+      console.error("Error fetching quotes:", error);
+      res.status(500).json([]);
+    }
+  });
+
+  app.get('/api/users', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const users = await storage.getUsersByAgency(user.agencyId);
+      res.json(users);
+    } catch (error) {
+      console.error("Error fetching users:", error);
+      res.status(500).json([]);
+    }
+  });
+
   // Create HTTP server
   const server = createServer(app);
 
