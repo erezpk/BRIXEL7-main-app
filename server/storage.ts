@@ -8,7 +8,7 @@ import {
   type UpsertUser,
   type Project, type InsertProject,
   type Lead, type InsertLead,
-} from "@shared/schema-sqlite";
+} from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, asc, like, gte, lte, isNull, or, sql, gt } from "drizzle-orm";
 import bcrypt from "bcrypt";

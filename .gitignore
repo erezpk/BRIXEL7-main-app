@@ -7,4 +7,7 @@ vite.config.ts.*
 *.log
 .env
 .env.local
+.env.example
+.env.production
 migrations
+*.md
