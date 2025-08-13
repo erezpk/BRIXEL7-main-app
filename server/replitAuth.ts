@@ -68,13 +68,15 @@ async function upsertUser(
 }
 
 export async function setupAuth(app: Express): Promise<void> {
-  console.log("Auth setup skipped for local development");
-  return;
-  // התגובות הבאות מושבתות כדי לאפשר פיתוח מקומי
+  console.log("Setting up local session management for development");
+  
+  // For local development, we just need session support
   app.set("trust proxy", 1);
-  app.use(getSession());
-  app.use(passport.initialize());
-  app.use(passport.session());
+  // We don't use getSession() here since it's designed for Replit
+  // Session middleware is already configured in index.ts
+  
+  // Skip Replit-specific Passport setup for local development
+  return;
 
   const config = await getOidcConfig();
 

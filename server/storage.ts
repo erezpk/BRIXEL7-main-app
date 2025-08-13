@@ -36,7 +36,15 @@ import {
   type ClientCardTemplate, type InsertClientCardTemplate,
   type ActivityLog
 } from "@shared/schema";
-import { db } from "./db";
+import { db, isUsingSqlite } from "./db";
+
+// Import SQLite schema types conditionally
+import * as sqliteSchema from "@shared/schema-sqlite";
+import * as pgSchema from "@shared/schema";
+
+// Use the correct schema based on database type
+const currentSchema = isUsingSqlite ? sqliteSchema : pgSchema;
+const { users, agencies, passwordResetTokens } = currentSchema;
 import { eq, and, desc, asc, like, gte, lte, isNull, or, sql, gt } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
