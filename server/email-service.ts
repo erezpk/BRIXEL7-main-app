@@ -1,4 +1,5 @@
 import * as nodemailer from 'nodemailer';
+import Brevo from '@getbrevo/brevo';
 
 interface EmailParams {
   to: string;
@@ -27,11 +28,19 @@ interface EmailConfig {
 class EmailService {
   private transporter: nodemailer.Transporter | null = null;
   private config: EmailConfig | null = null;
+  private useBrevo: boolean = false;
+  private brevo: {
+    transactionalApi: Brevo.TransactionalEmailsApi;
+    accountApi: Brevo.AccountApi;
+    senderEmail: string;
+    senderName?: string;
+  } | null = null;
 
   async initialize() {
     console.log('🔄 Initializing email service...');
     console.log('Gmail User:', process.env.GMAIL_USER ? 'Set' : 'Not set');
     console.log('Gmail App Password:', process.env.GMAIL_APP_PASSWORD ? 'Set' : 'Not set');
+    console.log('Brevo API Key:', process.env.BREVO_API_KEY ? 'Set' : 'Not set');
     
     // In development, default to a mock email transport to avoid SMTP errors
     if (process.env.NODE_ENV !== 'production' && process.env.MOCK_EMAIL !== 'false') {
@@ -48,8 +57,40 @@ class EmailService {
       return;
     }
 
-    // Check for Gmail credentials first
-    if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
+    // Prefer Brevo (Sendinblue) transactional emails if configured
+    if (process.env.BREVO_API_KEY && process.env.BREVO_SENDER_EMAIL) {
+      const apiKey = process.env.BREVO_API_KEY;
+      const senderEmail = process.env.BREVO_SENDER_EMAIL as string;
+      const senderName = process.env.BREVO_SENDER_NAME;
+
+      const transactionalApi = new Brevo.TransactionalEmailsApi();
+      transactionalApi.setApiKey(Brevo.TransactionalEmailsApiApiKeys.apiKey, apiKey as string);
+      const accountApi = new Brevo.AccountApi();
+      accountApi.setApiKey(Brevo.AccountApiApiKeys.apiKey, apiKey as string);
+
+      this.useBrevo = true;
+      this.brevo = { transactionalApi, accountApi, senderEmail, senderName };
+      this.config = {
+        host: 'brevo',
+        port: 0,
+        secure: true,
+        auth: { user: 'brevo', pass: 'apiKey' },
+        from: senderEmail
+      } as any;
+
+      try {
+        await accountApi.getAccount();
+        console.log('✅ Brevo API connection verified successfully');
+        console.log(`📧 Email service ready with Brevo: ${senderName || senderEmail}`);
+      } catch (error) {
+        console.error('❌ Brevo API verification failed:', error);
+        this.useBrevo = false;
+        this.brevo = null;
+        this.config = null;
+      }
+    }
+    // Check for Gmail credentials next
+    else if (process.env.GMAIL_USER && process.env.GMAIL_APP_PASSWORD) {
       this.config = {
         host: 'smtp.gmail.com',
         port: 587,
@@ -105,32 +146,57 @@ class EmailService {
   }
 
   async sendEmail(params: EmailParams): Promise<boolean> {
-    if (!this.transporter || !this.config) {
+    if (!this.useBrevo && (!this.transporter || !this.config)) {
       console.error('Email service not initialized or configured');
       return false;
     }
 
     try {
-      const mailOptions: any = {
-        from: `"${params.from?.split('@')[0] || 'HORIZON-X'}" <${this.config.from}>`, // Display name with actual sender
-        replyTo: params.from, // Reply goes to the user's email
-        to: params.to,
-        subject: params.subject,
-        text: params.text,
-        html: params.html
-      };
+      if (this.useBrevo && this.brevo) {
+        const sendSmtpEmail = new Brevo.SendSmtpEmail();
+        const senderName = params.from?.split('@')[0] || this.brevo.senderName || 'HORIZON-X';
 
-      // Add attachments if provided
-      if (params.attachments && params.attachments.length > 0) {
-        mailOptions.attachments = params.attachments;
-      }
+        sendSmtpEmail.sender = { email: this.brevo.senderEmail, name: senderName } as any;
+        sendSmtpEmail.replyTo = params.from ? { email: params.from } as any : undefined;
+        sendSmtpEmail.to = [{ email: params.to }] as any;
+        sendSmtpEmail.subject = params.subject;
+        if (params.html) sendSmtpEmail.htmlContent = params.html;
+        if (params.text) sendSmtpEmail.textContent = params.text;
 
-      const result = await this.transporter.sendMail(mailOptions);
-      console.log('📧 Email sent successfully:', result.messageId);
-      if (mailOptions.attachments) {
-        console.log(`📎 Email sent with ${mailOptions.attachments.length} attachment(s)`);
+        if (params.attachments && params.attachments.length > 0) {
+          (sendSmtpEmail as any).attachment = params.attachments.map(att => ({
+            name: att.filename,
+            content: att.content.toString('base64')
+          }));
+        }
+
+        const result = await this.brevo.transactionalApi.sendTransacEmail(sendSmtpEmail);
+        console.log('📧 Email sent successfully via Brevo:', (result as any).messageId || 'OK');
+        if ((sendSmtpEmail as any).attachment) {
+          console.log(`📎 Email sent with ${(sendSmtpEmail as any).attachment.length} attachment(s)`);
+        }
+        return true;
+      } else {
+        const mailOptions: any = {
+          from: `"${params.from?.split('@')[0] || 'HORIZON-X'}" <${this.config!.from}>`,
+          replyTo: params.from,
+          to: params.to,
+          subject: params.subject,
+          text: params.text,
+          html: params.html
+        };
+
+        if (params.attachments && params.attachments.length > 0) {
+          mailOptions.attachments = params.attachments;
+        }
+
+        const result = await this.transporter!.sendMail(mailOptions);
+        console.log('📧 Email sent successfully:', result.messageId);
+        if (mailOptions.attachments) {
+          console.log(`📎 Email sent with ${mailOptions.attachments.length} attachment(s)`);
+        }
+        return true;
       }
-      return true;
     } catch (error) {
       console.error('❌ Email sending failed:', error);
       return false;
@@ -275,6 +341,16 @@ class EmailService {
   }
 
   async testConnection(): Promise<boolean> {
+    if (this.useBrevo && this.brevo) {
+      try {
+        await this.brevo.accountApi.getAccount();
+        return true;
+      } catch (error) {
+        console.error('Email connection test failed (Brevo):', error);
+        return false;
+      }
+    }
+
     if (!this.transporter) {
       return false;
     }
