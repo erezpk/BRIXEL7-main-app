@@ -520,6 +520,160 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get current agency details
+  app.get('/api/agencies/current', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(404).json({ message: 'סוכנות לא נמצאה' });
+      }
+
+      const agency = await storage.getAgency(user.agencyId);
+      if (!agency) {
+        return res.status(404).json({ message: 'סוכנות לא נמצאה' });
+      }
+
+      res.json(agency);
+    } catch (error) {
+      console.error('Get current agency error:', error);
+      res.status(500).json({ message: 'שגיאה בקבלת פרטי הסוכנות' });
+    }
+  });
+
+  // Update current agency details
+  app.put('/api/agencies/current', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(404).json({ message: 'סוכנות לא נמצאה' });
+      }
+
+      // Check if user has permission to update agency
+      if (user.role !== 'agency_admin' && user.role !== 'owner') {
+        return res.status(403).json({ message: 'אין הרשאה לעדכן פרטי הסוכנות' });
+      }
+
+      const updateData = { ...req.body };
+      // Create slug from name if provided
+      if (updateData.name) {
+        updateData.slug = updateData.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]/g, '');
+      }
+
+      const updatedAgency = await storage.updateAgency(user.agencyId, updateData);
+      res.json(updatedAgency);
+    } catch (error) {
+      console.error('Update current agency error:', error);
+      res.status(500).json({ message: 'שגיאה בעדכון פרטי הסוכנות' });
+    }
+  });
+
+  // Setup Agency wizard endpoint
+  app.post('/api/setup-agency', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const { business, team, profile } = req.body;
+
+      if (!business || !business.name || !business.industry) {
+        return res.status(400).json({ message: 'פרטי העסק נדרשים' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user) {
+        return res.status(404).json({ message: 'משתמש לא נמצא' });
+      }
+
+      let agency;
+
+      // If user already has agency, update it
+      if (user.agencyId) {
+        agency = await storage.updateAgency(user.agencyId, {
+          name: business.name,
+          slug: business.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]/g, ''),
+          industry: business.industry,
+          website: business.website || null,
+          phone: business.phone || null,
+          email: business.email || null,
+          address: business.address || null,
+          description: business.description || null
+        });
+      } else {
+        // Create new agency
+        agency = await storage.createAgency({
+          name: business.name,
+          slug: business.name.toLowerCase().replace(/\s+/g, '-').replace(/[^\w\-]/g, ''),
+          industry: business.industry,
+          website: business.website || null,
+          phone: business.phone || null,
+          email: business.email || null,
+          address: business.address || null,
+          description: business.description || null
+        });
+
+        // Update user with agency ID
+        await storage.updateUser(user.id, { agencyId: agency.id });
+      }
+
+      // Update user profile
+      if (profile && profile.fullName) {
+        await storage.updateUser(user.id, {
+          fullName: profile.fullName,
+          phone: profile.phone || null,
+          // Add any additional profile fields as needed
+        });
+      }
+
+      // Create team members if provided
+      if (team && team.length > 0) {
+        for (const member of team) {
+          // Check if team member already exists
+          const existingMember = await storage.getUserByEmail(member.email);
+          if (!existingMember) {
+            // Create invitation or placeholder user
+            // For now, we'll create a basic user record that will need to be activated
+            const tempPassword = crypto.randomBytes(12).toString('hex');
+            const hashedPassword = await bcrypt.hash(tempPassword, 10);
+            
+            await storage.createUser({
+              email: member.email,
+              fullName: member.fullName,
+              password: hashedPassword,
+              role: member.role === 'admin' ? 'agency_admin' : 'team_member',
+              agencyId: agency.id,
+              isActive: false // Mark as inactive until they set their own password
+            });
+
+            // TODO: Send invitation email with setup link
+            console.log(`Team member invitation needed for: ${member.email}`);
+          }
+        }
+      }
+
+      res.json({ 
+        success: true,
+        agency: {
+          id: agency.id,
+          name: agency.name,
+          slug: agency.slug
+        }
+      });
+
+    } catch (error) {
+      console.error('Setup agency error:', error);
+      res.status(500).json({ message: 'שגיאה בהגדרת העסק' });
+    }
+  });
+
   // Create HTTP server
   const server = createServer(app);
 
