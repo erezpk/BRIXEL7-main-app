@@ -9,7 +9,25 @@ import {
   type Project, type InsertProject,
   type Lead, type InsertLead,
 } from "@shared/schema";
-import { db } from "./db";
+
+// Database configuration
+let db: any;
+
+// Initialize database based on environment
+if (process.env.DATABASE_URL) {
+  // Production: Use PostgreSQL
+  console.log('Using PostgreSQL database');
+  const { db: pgDb } = await import('./db.js');
+  db = pgDb;
+} else {
+  // Development: Use SQLite
+  console.log('⚠️ DATABASE_URL not set, using SQLite for development');
+  const { db: sqliteDb } = await import('./db-dev.js');
+  db = sqliteDb;
+}
+
+export { db };
+
 import { eq, and, desc, asc, like, gte, lte, isNull, or, sql, gt } from "drizzle-orm";
 import bcrypt from "bcrypt";
 
