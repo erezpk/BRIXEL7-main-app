@@ -1,0 +1,47 @@
+services:
+  - type: web
+    name: brixel7-main-app
+    env: node
+    plan: starter
+    region: oregon
+    runtime: node
+    buildCommand: npm ci --include=dev && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NPM_CONFIG_PRODUCTION
+        value: "false"
+      - key: NODE_ENV
+        value: production
+      # Email (choose one provider and set values in Render dashboard)
+      - key: GMAIL_USER
+        sync: false
+      - key: GMAIL_APP_PASSWORD
+        sync: false
+      - key: BREVO_API_KEY
+        sync: false
+      - key: BREVO_SENDER_EMAIL
+        sync: false
+      - key: BREVO_SENDER_NAME
+        sync: false
+      # Optional generic SMTP
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_SECURE
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASSWORD
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      # App
+      - key: SESSION_SECRET
+        generateValue: true
+      - key: BASE_URL
+        fromService:
+          type: web
+          name: brixel7-main-app
+          property: url
+
