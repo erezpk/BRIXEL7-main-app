@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useAuth } from "@/hooks/use-auth";
 import StatsCard from "@/components/dashboard/stats-card";
@@ -6,6 +6,7 @@ import QuickActions from "@/components/dashboard/quick-actions";
 import RecentActivity from "@/components/dashboard/recent-activity";
 import NewClientModal from "@/components/modals/new-client-modal";
 import NewTaskModal from "@/components/modals/new-task-modal";
+import NewUserOnboardingModal from "@/components/modals/new-user-onboarding-modal";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
@@ -32,6 +33,7 @@ export default function Dashboard() {
   const [showNewProjectModal, setShowProjectModal] = useState(false);
   const [showNewTaskModal, setShowTaskModal] = useState(false);
   const [showInviteTeamModal, setShowInviteTeamModal] = useState(false);
+  const [showOnboardingModal, setShowOnboardingModal] = useState(false);
   const queryClient = useQueryClient();
   const { toast } = useToast();
 
@@ -68,6 +70,23 @@ export default function Dashboard() {
     queryKey: ['/api/dashboard/stats'],
     staleTime: 60000, // 1 minute
   });
+
+  // Check if user is new (agency has no name)
+  const { data: currentAgency, isLoading: isLoadingAgency } = useQuery({
+    queryKey: ['/api/agencies/current'],
+    staleTime: 60000, // 1 minute
+  });
+
+  // Show onboarding modal if user is new
+  useEffect(() => {
+    if (!isLoadingAgency && currentAgency && user) {
+      // Check if this is a new user by looking at agency details
+      const isNewUser = !currentAgency.name || currentAgency.name.trim() === '';
+      if (isNewUser && user.role !== 'client' && user.role !== 'team_member') {
+        setShowOnboardingModal(true);
+      }
+    }
+  }, [currentAgency, isLoadingAgency, user]);
 
   const { data: clients = [] } = useQuery<Client[]>({
     queryKey: ['/api/clients'],
@@ -598,6 +617,12 @@ export default function Dashboard() {
           </form>
         </DialogContent>
       </Dialog>
+
+      {/* New User Onboarding Modal */}
+      <NewUserOnboardingModal 
+        open={showOnboardingModal} 
+        onClose={() => setShowOnboardingModal(false)} 
+      />
     </div>
   );
 }
