@@ -7,9 +7,9 @@
   "scripts": {
     "dev": "tsx server/index.ts",
     "dev:win": "set NODE_ENV=development&& tsx server/index.ts",
-    "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "npx vite build && npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "node dist/index.js",
-    "render-build": "npm install && npm run build && npm run db:push",
+    "render-build": "npm install && npm run build",
     "start:win": "set NODE_ENV=production&& node dist/index.js",
     "test:smtp": "tsx server/scripts/test-smtp.ts",
     "send:test": "tsx server/scripts/send-test-email.ts",
