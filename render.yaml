@@ -5,7 +5,7 @@ services:
     plan: starter
     region: oregon
     runtime: node
-    nodeVersion: "20"
+    nodeVersion: "20.x"
     buildCommand: npm ci --include=dev && npm run build
     startCommand: npm run start
     envVars:
