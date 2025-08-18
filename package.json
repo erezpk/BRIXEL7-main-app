@@ -12,6 +12,13 @@
     "build": "vite build && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "node dist/index.js",
     "start:win": "set NODE_ENV=production&& node dist/index.js",
+    "test:smtp": "tsx server/scripts/test-smtp.ts",
+    "send:test": "tsx server/scripts/send-test-email.ts",
+    "inspect:user": "tsx server/scripts/inspect-user.ts",
+    "delete:user": "tsx server/scripts/delete-user.ts",
+    "purge:user": "tsx server/scripts/purge-user-and-agency.ts",
+    "list:agencies": "tsx server/scripts/list-agencies.ts",
+    "delete:agency": "tsx server/scripts/delete-agency.ts",
     "check": "tsc",
     "db:push": "drizzle-kit push"
   },

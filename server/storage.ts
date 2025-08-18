@@ -149,7 +149,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async updateAgency(id: string, updateAgency: Partial<InsertAgency>): Promise<Agency> {
-    const updateData: any = { ...updateAgency, updatedAt: new Date() };
+    const updateData: any = { ...updateAgency, updatedAt: Date.now() };
 
     // Handle settings properly
     if (updateAgency.settings) {
@@ -176,7 +176,7 @@ export class DatabaseStorage implements IStorage {
   async updateUser(id: string, updateUser: Partial<InsertUser>): Promise<User> {
     const [user] = await this.db
       .update(users)
-      .set({ ...updateUser, updatedAt: new Date() })
+      .set({ ...updateUser, updatedAt: Date.now() })
       .where(eq(users.id, id))
       .returning();
     return user;
@@ -199,7 +199,7 @@ export class DatabaseStorage implements IStorage {
         .update(users)
         .set({
           ...userData,
-          updatedAt: new Date(),
+          updatedAt: Date.now(),
         })
         .where(eq(users.id, existingUser.id))
         .returning();
@@ -242,7 +242,7 @@ export class DatabaseStorage implements IStorage {
   async updateClient(id: string, updateClient: Partial<InsertClient>): Promise<Client> {
     const [client] = await this.db
       .update(clients)
-      .set({ ...updateClient, updatedAt: new Date() })
+      .set({ ...updateClient, updatedAt: Date.now() })
       .where(eq(clients.id, id))
       .returning();
     return client;
@@ -287,7 +287,7 @@ export class DatabaseStorage implements IStorage {
   async updateProject(id: string, updateProject: Partial<InsertProject>): Promise<Project> {
     const [project] = await this.db
       .update(projects)
-      .set({ ...updateProject, updatedAt: new Date() })
+      .set({ ...updateProject, updatedAt: Date.now() })
       .where(eq(projects.id, id))
       .returning();
     return project;
@@ -338,8 +338,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(passwordResetTokens.userId, userId));
 
     // Create new token (expires in 24 hours)
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
+    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
 
     await this.db.insert(passwordResetTokens)
       .values({
@@ -356,7 +355,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(passwordResetTokens.token, token),
         eq(passwordResetTokens.used, false),
-        gt(passwordResetTokens.expiresAt, new Date())
+        gt(passwordResetTokens.expiresAt, Date.now())
       ));
 
     return tokenRecord ? tokenRecord.userId : null;
@@ -411,7 +410,7 @@ export class DatabaseStorage implements IStorage {
   async updateLead(id: string, updateLead: Partial<InsertLead>): Promise<Lead> {
     const [lead] = await this.db
       .update(leads)
-      .set({ ...updateLead, updatedAt: new Date() })
+      .set({ ...updateLead, updatedAt: Date.now() })
       .where(eq(leads.id, id))
       .returning();
     return lead;
@@ -444,7 +443,7 @@ export class DatabaseStorage implements IStorage {
   async updateProduct(id: string, updateProduct: Partial<InsertProduct>): Promise<Product> {
     const [product] = await this.db
       .update(products)
-      .set({ ...updateProduct, updatedAt: new Date() } as any)
+      .set({ ...updateProduct, updatedAt: Date.now() } as any)
       .where(eq(products.id, id))
       .returning();
     return product;
@@ -491,7 +490,7 @@ export class DatabaseStorage implements IStorage {
   async updateQuote(id: string, updateQuote: Partial<InsertQuote>): Promise<Quote> {
     const [quote] = await this.db
       .update(quotes)
-      .set({ ...updateQuote, updatedAt: new Date() } as any)
+      .set({ ...updateQuote, updatedAt: Date.now() } as any)
       .where(eq(quotes.id, id))
       .returning();
     return quote;
