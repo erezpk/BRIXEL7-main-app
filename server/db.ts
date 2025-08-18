@@ -12,6 +12,7 @@ if (!process.env.DATABASE_URL) {
     console.log("No DATABASE_URL set, using SQLite for local development");
     useLocalDb = true;
     // We'll handle the SQLite import dynamically when needed
+    
   } else {
     throw new Error("DATABASE_URL not set");
   }

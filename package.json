@@ -7,7 +7,7 @@
   "scripts": {
     "dev": "tsx server/index.ts",
     "dev:win": "set NODE_ENV=development&& tsx server/index.ts",
-    "build": "npx vite build && npx esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
+    "build": "vite build --config vite.config.js && esbuild server/index.ts --platform=node --packages=external --bundle --format=esm --outdir=dist",
     "start": "node dist/index.js",
     "render-build": "npm install && npm run build",
     "start:win": "set NODE_ENV=production&& node dist/index.js",
