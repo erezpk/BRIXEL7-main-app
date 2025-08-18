@@ -4,16 +4,15 @@ services:
     env: node
     plan: starter
     region: oregon
-    runtime: node
-    nodeVersion: "22.18.0"
-    buildCommand: npm ci --include=dev && npm run build
+    buildCommand: npm install --include=dev && npm run build
     startCommand: npm run start
     envVars:
       - key: NPM_CONFIG_PRODUCTION
         value: "false"
       - key: NODE_ENV
-        value: production
-      # Email (choose one provider and set values in Render dashboard)
+        value: "production"
+
+      # Email (בחר ספק אחד והגדר ערכים בדשבורד של Render)
       - key: GMAIL_USER
         sync: false
       - key: GMAIL_APP_PASSWORD
@@ -24,6 +23,7 @@ services:
         sync: false
       - key: BREVO_SENDER_NAME
         sync: false
+
       # Optional generic SMTP
       - key: SMTP_HOST
         sync: false
@@ -37,6 +37,7 @@ services:
         sync: false
       - key: SMTP_FROM
         sync: false
+
       # App
       - key: SESSION_SECRET
         generateValue: true
@@ -45,4 +46,3 @@ services:
           type: web
           name: brixel7-main-app
           property: url
-
