@@ -4,8 +4,11 @@ services:
     env: node
     plan: starter
     region: oregon
+
+    # מתקין גם devDependencies כדי ש-vite/esbuild יהיו זמינים בזמן build
     buildCommand: npm install --include=dev && npm run build
     startCommand: npm run start
+
     envVars:
       - key: NPM_CONFIG_PRODUCTION
         value: "false"
@@ -41,8 +44,7 @@ services:
       # App
       - key: SESSION_SECRET
         generateValue: true
+
+      # אם אתה רוצה לקבוע BASE_URL ידנית בדשבורד (לא חובה)
       - key: BASE_URL
-        fromService:
-          type: web
-          name: brixel7-main-app
-          property: url
+        sync: false
