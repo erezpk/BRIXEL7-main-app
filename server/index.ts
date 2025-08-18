@@ -27,16 +27,22 @@ app.use(cors({
 app.use(express.json({ limit: '50mb' }));
 app.use(express.urlencoded({ extended: true, limit: '50mb' }));
 
-// Session middleware
+// Session middleware with production-ready configuration
+const isProduction = process.env.NODE_ENV === 'production';
 app.use(session({
-  secret: process.env.SESSION_SECRET || 'your-secret-key-change-in-production',
+  secret: process.env.SESSION_SECRET || (isProduction ? 
+    (() => { throw new Error('SESSION_SECRET is required in production'); })() : 
+    'dev-secret-key'
+  ),
   resave: false,
   saveUninitialized: false,
   cookie: {
-    secure: false, // Set to true in production with HTTPS
+    secure: isProduction, // HTTPS only in production
     httpOnly: true,
-    maxAge: 24 * 60 * 60 * 1000 // 24 hours
-  }
+    maxAge: 24 * 60 * 60 * 1000, // 24 hours
+    sameSite: isProduction ? 'strict' : 'lax'
+  },
+  name: 'brixel7.sid' // Custom session name for security
 }));
 
 app.use((req, res, next) => {

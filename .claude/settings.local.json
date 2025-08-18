@@ -5,7 +5,8 @@
       "Bash(npm run:*)",
       "Bash(rm:*)",
       "Bash(npx kill-port:*)",
-      "Bash(curl:*)"
+      "Bash(curl:*)",
+      "Bash(npm install:*)"
     ],
     "deny": [],
     "ask": []

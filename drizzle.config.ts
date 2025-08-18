@@ -6,9 +6,9 @@ if (!process.env.DATABASE_URL) {
 
 export default defineConfig({
   out: "./migrations",
-  schema: "./shared/schema-sqlite.ts",
-  dialect: "sqlite",
+  schema: "./shared/schema.ts", // Use PostgreSQL schema for Render
+  dialect: "postgresql",
   dbCredentials: {
-    url: process.env.DATABASE_URL.replace('file:', ''),
+    url: process.env.DATABASE_URL,
   },
 });
