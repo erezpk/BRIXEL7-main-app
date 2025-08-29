@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
@@ -29,6 +29,7 @@ import {
 import { useAuth } from "@/hooks/use-auth";
 import { useToast } from "@/hooks/use-toast";
 import { useQuery } from "@tanstack/react-query";
+import { NotificationManager } from "@/lib/notifications";
 
 interface HeaderProps {
   onToggleSidebar: () => void;
@@ -42,11 +43,24 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
   const [notificationsOpen, setNotificationsOpen] = useState(false);
   const [clickedNotifications, setClickedNotifications] = useState<Set<string>>(new Set());
 
-  // Fetch recent activity for notifications
-  const { data: notifications } = useQuery({
-    queryKey: ['/api/dashboard/activity'],
-    staleTime: 60000, // 1 minute
-  });
+  // Use local notification system
+  const [localNotifications, setLocalNotifications] = useState<any[]>([]);
+  
+  useEffect(() => {
+    const loadNotifications = () => {
+      const notifications = NotificationManager.getNotifications();
+      setLocalNotifications(notifications);
+    };
+    
+    loadNotifications();
+    
+    // Check for new notifications every 5 seconds
+    const interval = setInterval(loadNotifications, 5000);
+    
+    return () => clearInterval(interval);
+  }, []);
+  
+  const notifications = localNotifications;
 
   const handleLogout = () => {
     logout(undefined, {
@@ -159,7 +173,17 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
                                 ? 'bg-gradient-to-r from-green-50 to-blue-50 hover:bg-gradient-to-r hover:from-green-100 hover:to-blue-100 border-l-4 border-green-500' 
                                 : 'hover:bg-gray-50'
                           }`}
-                          onClick={() => handleNotificationClick(notification.id || index.toString())}
+                          onClick={() => {
+                            handleNotificationClick(notification.id || index.toString());
+                            // Navigate to lead card if it's a lead notification
+                            if (notification.entityType === 'lead' && notification.details?.leadId) {
+                              window.location.href = `/dashboard/leads/${notification.details.leadId}`;
+                            } else if (notification.entityType === 'client' && notification.details?.clientId) {
+                              window.location.href = `/dashboard/clients/${notification.details.clientId}`;
+                            } else if (notification.entityType === 'project' && notification.details?.projectId) {
+                              window.location.href = `/dashboard/projects/${notification.details.projectId}`;
+                            }
+                          }}
                           data-testid={`notification-${index}`}
                         >
                           <div className="flex items-start space-x-reverse space-x-3">
@@ -183,12 +207,18 @@ export default function Header({ onToggleSidebar }: HeaderProps) {
                                 {notification.action === 'created' && 'נוצר '}
                                 {notification.action === 'updated' && 'עודכן '}
                                 {notification.action === 'deleted' && 'נמחק '}
+                                {notification.action === 'meeting_created' && 'נקבעה פגישה עם '}
+                                {notification.action === 'email_sent' && 'נשלח אימייל ל-'}
+                                {notification.action === 'status_changed' && 'שונה סטטוס ליד: '}
                                 {notification.entityType === 'client' && 'לקוח'}
                                 {notification.entityType === 'project' && 'פרויקט'}
                                 {notification.entityType === 'task' && 'משימה'}
+                                {notification.entityType === 'lead' && 'ליד'}
                                 {notification.details?.clientName && `: ${notification.details.clientName}`}
                                 {notification.details?.projectName && `: ${notification.details.projectName}`}
                                 {notification.details?.taskTitle && `: ${notification.details.taskTitle}`}
+                                {notification.details?.leadName && `: ${notification.details.leadName}`}
+                                {notification.details?.userName && ` על ידי ${notification.details.userName}`}
                               </p>
                               <p className={`text-xs mt-1 ${isNew && !isClicked ? 'text-gray-600 font-medium' : 'text-gray-500'}`}>
                                 {new Date(notification.createdAt).toLocaleDateString('he-IL', {

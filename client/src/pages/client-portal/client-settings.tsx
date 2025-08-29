@@ -11,7 +11,7 @@ import { useMutation } from '@tanstack/react-query';
 import { 
   Settings as SettingsIcon, 
   Facebook, 
-  Chrome,
+  Globe,
   Link,
   Unlink,
   Save,
@@ -425,7 +425,7 @@ export default function ClientSettings() {
         <Card>
           <CardHeader>
             <CardTitle className="flex items-center gap-2">
-              <Chrome className="h-5 w-5 text-green-600" />
+              <Globe className="h-5 w-5 text-green-600" />
               גוגל אדס
             </CardTitle>
           </CardHeader>
