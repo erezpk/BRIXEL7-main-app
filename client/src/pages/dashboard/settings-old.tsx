@@ -9,7 +9,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Separator } from "@/components/ui/separator";
 import { Badge } from "@/components/ui/badge";
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
-import { AlertTriangle, Bell, Facebook, Chrome, Settings as SettingsIcon, Shield, Users, Palette, Zap, Plus, ExternalLink, Trash2, CheckCircle, RefreshCw, Mail, ArrowLeft, Upload, Image, Building, FileText } from "lucide-react";
+import { AlertTriangle, Bell, Facebook, Globe, Settings as SettingsIcon, Shield, Users, Palette, Zap, Plus, ExternalLink, Trash2, CheckCircle, RefreshCw, Mail, ArrowLeft, Upload, Image, Building, FileText } from "lucide-react";
 import { ObjectUploader } from '@/components/ObjectUploader';
 import { useToast } from "@/hooks/use-toast";
 import { cn } from "@/lib/utils";
@@ -523,7 +523,7 @@ export default function Settings() {
               <Dialog open={isGoogleDialogOpen} onOpenChange={setIsGoogleDialogOpen}>
                 <DialogTrigger asChild>
                   <Button variant="outline" size="sm">
-                    <Chrome className="h-4 w-4 me-2" />
+                    <Globe className="h-4 w-4 me-2" />
                     חבר גוגל אדס
                   </Button>
                 </DialogTrigger>
@@ -595,7 +595,7 @@ export default function Settings() {
                       {account.platform === 'facebook' ? (
                         <Facebook className="h-8 w-8 text-blue-600" />
                       ) : (
-                        <Chrome className="h-8 w-8 text-blue-500" />
+                        <Globe className="h-8 w-8 text-blue-500" />
                       )}
                       <div>
                         <h4 className="font-medium">{account.name}</h4>

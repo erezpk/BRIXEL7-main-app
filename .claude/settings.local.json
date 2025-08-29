@@ -6,7 +6,19 @@
       "Bash(rm:*)",
       "Bash(npx kill-port:*)",
       "Bash(curl:*)",
-      "Bash(npm install:*)"
+      "Bash(npm install:*)",
+      "Bash(timeout:*)",
+      "Bash(del database.db)",
+      "Bash(cmd /c:*)",
+      "Bash(node:*)",
+      "Bash(sqlite3:*)",
+      "Bash(tsx test-lead-update.js:*)",
+      "Bash(npx tsx:*)",
+      "Bash(taskkill:*)",
+      "Bash(git add:*)",
+      "Bash(del nul)",
+      "Bash(git reset:*)",
+      "Bash(git commit:*)"
     ],
     "deny": [],
     "ask": []
