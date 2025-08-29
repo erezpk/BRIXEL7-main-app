@@ -105,8 +105,6 @@ export default function UnifiedSettings() {
     },
   });
 
-<<<<<<< HEAD
-=======
   // Update settings mutation
   const updateSettingsMutation = useMutation({
     mutationFn: async (data: typeof settings) => {
@@ -126,8 +124,6 @@ export default function UnifiedSettings() {
       });
     },
   });
-
->>>>>>> f54764f5dc343e882aeda53f92c07128e830ece3
   // Upload logo handlers
   const handleGetUploadParameters = async () => {
     try {
