@@ -28,7 +28,9 @@ export default function Login() {
   // Redirect if already logged in
   useEffect(() => {
     if (!isLoading && user) {
-      setLocation("/dashboard");
+      const setupKey = `setup_complete_${user.id}`;
+      const shouldGoToSetup = !localStorage.getItem(setupKey);
+      setLocation(shouldGoToSetup ? "/dashboard/unified-settings" : "/dashboard");
     }
   }, [user, isLoading, setLocation]);
 
@@ -118,8 +120,10 @@ export default function Login() {
       console.log('✅ User state updated after Google login, redirecting to dashboard...');
       toast({ title: "התחברת עם Google", description: "ברוך השב" });
       setTimeout(() => {
-        console.log('🔄 Executing redirect to dashboard...');
-        setLocation('/dashboard');
+        console.log('🔄 Executing redirect post Google login...');
+        const setupKey = `setup_complete_${user.id}`;
+        const shouldGoToSetup = !localStorage.getItem(setupKey);
+        setLocation(shouldGoToSetup ? '/dashboard/unified-settings' : '/dashboard');
         setIsGoogleLogin(false); // Reset flag
       }, 500);
     }

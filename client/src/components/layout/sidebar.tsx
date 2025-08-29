@@ -78,6 +78,7 @@ const navigation = [
     subItems: [
       { name: "צוות", href: "/dashboard/team", icon: UserCheck },
       { name: "דוחות", href: "/dashboard/reports", icon: BarChart3 },
+      { name: "הגדרות סוכנות", href: "/dashboard/unified-settings", icon: Settings },
     ]
   },
   { 
@@ -85,7 +86,6 @@ const navigation = [
     icon: Settings, 
     subItems: [
       { name: "פרופיל אישי", href: "/dashboard/profile", icon: User },
-      { name: "הגדרות מערכת", href: "/dashboard/unified-settings", icon: Settings },
       { name: "הגדרות אימייל", href: "/dashboard/email-setup", icon: Mail },
     ]
   },

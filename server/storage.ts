@@ -349,8 +349,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(passwordResetTokens.userId, userId));
 
     // Create new token (expires in 24 hours)
-    const expiresAt = new Date();
-    expiresAt.setHours(expiresAt.getHours() + 24);
+    const expiresAt = Date.now() + 24 * 60 * 60 * 1000;
 
     await this.db.insert(passwordResetTokens)
       .values({
@@ -367,7 +366,7 @@ export class DatabaseStorage implements IStorage {
       .where(and(
         eq(passwordResetTokens.token, token),
         eq(passwordResetTokens.used, false),
-        gt(passwordResetTokens.expiresAt, new Date())
+        gt(passwordResetTokens.expiresAt, Date.now())
       ));
 
     return tokenRecord ? tokenRecord.userId : null;

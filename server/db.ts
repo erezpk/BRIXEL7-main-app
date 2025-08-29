@@ -11,7 +11,6 @@ import { Pool } from 'pg';
 import Database from 'better-sqlite3';
 import * as schema from "@shared/schema";
 import * as schemaSqlite from "@shared/schema-sqlite";
-
 let db: any;
 let pool: any;
 let useLocalDb = false;
@@ -21,7 +20,7 @@ if (!process.env.DATABASE_URL) {
   if (process.env.NODE_ENV === 'development' || !process.env.NODE_ENV) {
     console.log("No DATABASE_URL set, using SQLite for local development");
     useLocalDb = true;
-    const sqlite = new Database('./app.db');
+    const sqlite = new Database('./database.db');
     db = drizzleSqlite(sqlite, { schema: schemaSqlite });
   } else {
     throw new Error("DATABASE_URL not set");

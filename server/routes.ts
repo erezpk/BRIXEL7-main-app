@@ -239,8 +239,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const user = await storage.getUserByEmail(email);
       if (!user) {
-        // Don't reveal if user exists
-        return res.json({ message: 'אם האימייל קיים במערכת, תקבל הוראות לאיפוס סיסמה' });
+        return res.status(404).json({ message: 'משתמש לא רשום' });
       }
 
       // Generate reset token and store via password_reset_tokens table

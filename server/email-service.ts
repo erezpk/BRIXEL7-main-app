@@ -271,7 +271,7 @@ class EmailService {
   }
 
   async sendPasswordReset(to: string, resetToken: string): Promise<boolean> {
-    const resetUrl = `${process.env.BASE_URL || 'http://localhost:3000'}/reset-password?token=${resetToken}`;
+    const resetUrl = `${process.env.BASE_URL || 'http://localhost:5000'}/auth/reset-password?token=${resetToken}`;
     
     const html = `
       <div dir="rtl" style="font-family: Arial, sans-serif; direction: rtl; text-align: right;">
@@ -286,6 +286,7 @@ class EmailService {
 
     return this.sendEmail({
       to,
+      from: this.config?.from,
       subject: 'איפוס סיסמה - AgencyCRM',
       html,
       text: `איפוס סיסמה: ${resetUrl}`
