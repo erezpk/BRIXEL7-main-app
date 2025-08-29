@@ -72,6 +72,8 @@ export default function Leads() {
     status: "new",
     priority: "medium",
     value: 0,
+    industry: "",
+    budget: 0,
     notes: "",
     assignedTo: "unassigned",
   });
@@ -166,6 +168,8 @@ export default function Leads() {
       status: "new",
       priority: "medium",
       value: 0,
+      industry: "",
+      budget: 0,
       notes: "",
       assignedTo: "unassigned",
     });
@@ -442,6 +446,39 @@ export default function Leads() {
                     value={leadForm.value}
                     onChange={(e) => setLeadForm({...leadForm, value: Number(e.target.value)})}
                     placeholder="0"
+                  />
+                </div>
+
+                <div>
+                  <Label htmlFor="industry">תעשייה</Label>
+                  <Select value={leadForm.industry} onValueChange={(value) => setLeadForm({...leadForm, industry: value})}>
+                    <SelectTrigger>
+                      <SelectValue placeholder="בחר תעשייה" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="technology">טכנולוגיה</SelectItem>
+                      <SelectItem value="marketing">שיווק</SelectItem>
+                      <SelectItem value="ecommerce">מסחר אלקטרוני</SelectItem>
+                      <SelectItem value="healthcare">בריאות</SelectItem>
+                      <SelectItem value="finance">פיננסים</SelectItem>
+                      <SelectItem value="education">חינוך</SelectItem>
+                      <SelectItem value="real_estate">נדל"ן</SelectItem>
+                      <SelectItem value="retail">קמעונאות</SelectItem>
+                      <SelectItem value="manufacturing">ייצור</SelectItem>
+                      <SelectItem value="services">שירותים</SelectItem>
+                      <SelectItem value="other">אחר</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+
+                <div>
+                  <Label htmlFor="budget">תקציב משוער (₪)</Label>
+                  <Input
+                    id="budget"
+                    type="number"
+                    value={leadForm.budget}
+                    onChange={(e) => setLeadForm({...leadForm, budget: Number(e.target.value)})}
+                    placeholder="10000"
                   />
                 </div>
 

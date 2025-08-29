@@ -54,8 +54,6 @@ export default function UnifiedSettings() {
     },
   });
 
-<<<<<<< HEAD
-=======
   // States
   const [settings, setSettings] = useState({
     general: {
@@ -64,8 +62,6 @@ export default function UnifiedSettings() {
       theme: "light"
     }
   });
-
->>>>>>> f54764f5dc343e882aeda53f92c07128e830ece3
   const [agencyLogo, setAgencyLogo] = useState<string | null>(null);
 
   // Fetch current agency

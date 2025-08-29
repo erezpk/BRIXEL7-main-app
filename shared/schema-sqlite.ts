@@ -116,6 +116,7 @@ export const leads = sqliteTable("leads", {
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
+  industry: text("industry"),
   source: text("source").notNull(),
   campaign_id: text("campaign_id"), // campaign ID from ads platform
   campaignName: text("campaign_name"), // campaign name

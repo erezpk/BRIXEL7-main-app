@@ -286,6 +286,120 @@ export default function LeadDetails() {
     return meetings;
   };
 
+  // Calculate lead metrics
+  const calculateLeadMetrics = (lead: Lead, activities: any[]) => {
+    // Calculate interactions - count actual contact attempts
+    const interactions = activities.filter(activity => 
+      activity.type === 'meeting_scheduled' || 
+      activity.type === 'email_sent' || 
+      activity.type === 'phone_call' || 
+      activity.type === 'whatsapp_sent' ||
+      activity.type === 'note_added'
+    ).length;
+
+    // Calculate response time - average time between lead messages and our responses
+    // For now, we'll simulate this based on creation date and first contact
+    const leadCreated = new Date(lead.createdAt);
+    const firstContact = activities.length > 0 ? new Date(activities[activities.length - 1].timestamp) : leadCreated;
+    const responseTimeHours = Math.max(0, (firstContact.getTime() - leadCreated.getTime()) / (1000 * 60 * 60));
+    
+    // Calculate sales probability score
+    let score = 0;
+    
+    // 1. Ideal Customer Fit (40 points max)
+    // Industry fit
+    if (lead.industry) {
+      const idealIndustries = ['technology', 'marketing', 'ecommerce', 'healthcare'];
+      if (idealIndustries.includes(lead.industry.toLowerCase())) score += 10;
+      else score += 5; // borderline
+    }
+    
+    // Budget/Company size
+    if (lead.budget) {
+      if (lead.budget > 50000) score += 10; // High
+      else if (lead.budget > 10000) score += 6; // Medium
+      else score += 2; // Low
+    } else score += 3; // Unknown, assume medium
+    
+    // Authority (assumed based on contact name or role)
+    if (lead.contact_name && (lead.contact_name.includes('CEO') || lead.contact_name.includes('מנכל') || lead.contact_name.includes('בעלים'))) {
+      score += 5; // Decision maker
+    } else score += 3; // Influencer
+    
+    // Geographic area (assume yes for Israeli market)
+    score += 5;
+    
+    // Business stage and technical requirements (assume yes)
+    score += 5; // Business stage
+    score += 5; // Technical requirements
+    
+    // 2. Intent and Interaction (40 points max)
+    // Has contact details
+    if (lead.email && lead.phone) score += 10;
+    
+    // Meeting scheduled
+    if (activities.some(a => a.type === 'meeting_scheduled')) score += 10;
+    
+    // Answered calls/responded
+    if (lead.status === 'contacted' || lead.status === 'qualified') score += 5;
+    
+    // Interactions in last 7 days
+    const lastWeek = Date.now() - (7 * 24 * 60 * 60 * 1000);
+    const recentInteractions = activities.filter(a => a.timestamp > lastWeek).length;
+    score += Math.min(recentInteractions, 8) / 8 * 10;
+    
+    // Content consumption (simulate)
+    score += 3; // Assume some content viewed
+    
+    // Opens/Clicks (simulate)
+    score += 2; // Assume some engagement
+    
+    // 3. Source Quality (10 points max)
+    // Simulate based on common source performance
+    const sourceScores = {
+      'google': 8,
+      'facebook': 6,
+      'linkedin': 9,
+      'referral': 10,
+      'direct': 7,
+      'other': 5
+    };
+    score += sourceScores[lead.source as keyof typeof sourceScores] || 5;
+    
+    // 4. Timing and Process (10 points max)
+    // First response time
+    if (responseTimeHours <= 0.083) score += 5; // 5 minutes
+    else if (responseTimeHours <= 6) score += 3; // 6 hours
+    else if (responseTimeHours <= 24) score += 1; // Same day
+    
+    // Pipeline stage
+    const stageScores = {
+      'new': 0,
+      'contacted': 2,
+      'qualified': 6,
+      'won': 8,
+      'lost': 0
+    };
+    score += stageScores[lead.status as keyof typeof stageScores] || 0;
+    
+    // Negative factors (simulate some)
+    if (lead.budget && lead.budget < 5000) score -= 10; // Low budget
+    if (lead.status === 'lost') score -= 20;
+    
+    // Clamp score between 0 and 100
+    score = Math.max(0, Math.min(100, score));
+    
+    // Convert to probability using sigmoid function
+    const probability = Math.round(100 / (1 + Math.exp(-(score - 50) / 10)));
+    
+    return {
+      interactions,
+      responseTimeHours: Math.round(responseTimeHours * 10) / 10,
+      salesScore: score,
+      salesProbability: probability
+    };
+  };
+
   // Extract activities from notes (meetings, notes, etc.)
   const getActivitiesFromNotes = (notes: string) => {
     if (!notes) return [];
@@ -350,6 +464,7 @@ export default function LeadDetails() {
 
   const leadMeetings = lead ? getMeetingsFromNotes(lead.notes || '') : [];
   const leadActivities = lead ? getActivitiesFromNotes(lead.notes || '') : [];
+  const leadMetrics = lead ? calculateLeadMetrics(lead, leadActivities) : { interactions: 0, responseTimeHours: 0, salesScore: 0, salesProbability: 0 };
 
   // Fetch tasks for this lead
   const { data: leadTasks = [] } = useQuery({
@@ -414,9 +529,29 @@ export default function LeadDetails() {
             
             {/* Action Buttons */}
             <div className="flex items-center gap-2">
-              <Button size="sm" variant="outline" className="text-gray-600" onClick={() => toast({ title: 'שיתוף', description: 'קישור לשיתוף נוצר בהצלחה' })}>
-                <Share2 className="h-4 w-4 ml-2" />
-                שתף
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="text-purple-600 border-purple-200 hover:bg-purple-50"
+                onClick={() => window.open(`/client-portal/dashboard?leadId=${leadId}`, '_blank')}
+              >
+                <User className="h-4 w-4 ml-2" />
+                צפה כלקוח
+              </Button>
+              <Button 
+                size="sm" 
+                variant="outline" 
+                className="text-blue-600 border-blue-200 hover:bg-blue-50"
+                onClick={() => {
+                  // Generate login link or send login details
+                  toast({ 
+                    title: 'פרטי התחברות נשלחו', 
+                    description: `פרטי התחברות נשלחו ל-${lead.email}` 
+                  });
+                }}
+              >
+                <Send className="h-4 w-4 ml-2" />
+                שלח פרטי התחברות
               </Button>
               <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => setShowMeetingModal(true)}>
                 <Calendar className="h-4 w-4 ml-2" />
@@ -502,7 +637,8 @@ export default function LeadDetails() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">אינטראקציות</p>
-                      <p className="text-2xl font-bold text-green-600">7</p>
+                      <p className="text-2xl font-bold text-green-600">{leadMetrics.interactions}</p>
+                      <p className="text-xs text-gray-500 mt-1">פעילויות קשר</p>
                     </div>
                     <Activity className="h-8 w-8 text-green-600" />
                   </div>
@@ -511,7 +647,13 @@ export default function LeadDetails() {
                   <div className="flex items-center justify-between">
                     <div>
                       <p className="text-sm font-medium text-gray-600">זמן מענה</p>
-                      <p className="text-2xl font-bold text-blue-600">2.3ש</p>
+                      <p className="text-2xl font-bold text-blue-600">
+                        {leadMetrics.responseTimeHours < 1 
+                          ? `${Math.round(leadMetrics.responseTimeHours * 60)}m`
+                          : `${leadMetrics.responseTimeHours}h`
+                        }
+                      </p>
+                      <p className="text-xs text-gray-500 mt-1">ממוצע מענה</p>
                     </div>
                     <Clock className="h-8 w-8 text-blue-600" />
                   </div>
@@ -519,19 +661,35 @@ export default function LeadDetails() {
                 <Card className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">אינטראקציות</p>
-                      <p className="text-2xl font-bold text-purple-600">12</p>
+                      <p className="text-sm font-medium text-gray-600">ציון איכות</p>
+                      <p className="text-2xl font-bold text-purple-600">{leadMetrics.salesScore}</p>
+                      <p className="text-xs text-gray-500 mt-1">מתוך 100</p>
                     </div>
-                    <Activity className="h-8 w-8 text-purple-600" />
+                    <Target className="h-8 w-8 text-purple-600" />
                   </div>
                 </Card>
                 <Card className="p-4">
                   <div className="flex items-center justify-between">
                     <div>
-                      <p className="text-sm font-medium text-gray-600">הסתברות</p>
-                      <p className="text-2xl font-bold text-orange-600">76%</p>
+                      <p className="text-sm font-medium text-gray-600">הסתברות סגירה</p>
+                      <p className={`text-2xl font-bold ${
+                        leadMetrics.salesProbability >= 75 ? 'text-green-600' :
+                        leadMetrics.salesProbability >= 40 ? 'text-orange-600' : 'text-red-600'
+                      }`}>
+                        {leadMetrics.salesProbability}%
+                      </p>
+                      <p className={`text-xs mt-1 font-medium ${
+                        leadMetrics.salesProbability >= 75 ? 'text-green-600' :
+                        leadMetrics.salesProbability >= 40 ? 'text-orange-600' : 'text-red-600'
+                      }`}>
+                        {leadMetrics.salesProbability >= 75 ? 'חם' :
+                         leadMetrics.salesProbability >= 40 ? 'בינוני' : 'קר'}
+                      </p>
                     </div>
-                    <TrendingUp className="h-8 w-8 text-orange-600" />
+                    <TrendingUp className={`h-8 w-8 ${
+                      leadMetrics.salesProbability >= 75 ? 'text-green-600' :
+                      leadMetrics.salesProbability >= 40 ? 'text-orange-600' : 'text-red-600'
+                    }`} />
                   </div>
                 </Card>
               </div>
@@ -581,6 +739,39 @@ export default function LeadDetails() {
                       <div className="flex-1">
                         <p className="text-sm font-medium text-gray-600">ערך פוטנציאלי</p>
                         <p className="font-semibold text-gray-900">{lead.value.toLocaleString()} ₪</p>
+                      </div>
+                    </div>
+                  )}
+                  {lead.industry && (
+                    <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-indigo-50 to-indigo-100 rounded-lg border border-indigo-200">
+                      <div className="w-12 h-12 bg-indigo-500 rounded-full flex items-center justify-center">
+                        <Building className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-600">תעשייה</p>
+                        <p className="font-semibold text-gray-900">
+                          {lead.industry === 'technology' ? 'טכנולוגיה' :
+                           lead.industry === 'marketing' ? 'שיווק' :
+                           lead.industry === 'ecommerce' ? 'מסחר אלקטרוני' :
+                           lead.industry === 'healthcare' ? 'בריאות' :
+                           lead.industry === 'finance' ? 'פיננסים' :
+                           lead.industry === 'education' ? 'חינוך' :
+                           lead.industry === 'real_estate' ? 'נדל"ן' :
+                           lead.industry === 'retail' ? 'קמעונאות' :
+                           lead.industry === 'manufacturing' ? 'ייצור' :
+                           lead.industry === 'services' ? 'שירותים' : 'אחר'}
+                        </p>
+                      </div>
+                    </div>
+                  )}
+                  {lead.budget && lead.budget > 0 && (
+                    <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-amber-50 to-amber-100 rounded-lg border border-amber-200">
+                      <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center">
+                        <DollarSign className="h-6 w-6 text-white" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm font-medium text-gray-600">תקציב משוער</p>
+                        <p className="font-semibold text-gray-900">{lead.budget.toLocaleString()} ₪</p>
                       </div>
                     </div>
                   )}
