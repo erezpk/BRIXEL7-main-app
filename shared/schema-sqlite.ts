@@ -78,7 +78,7 @@ export const clients = sqliteTable("clients", {
   id: text("id").primaryKey().$defaultFn(() => globalThis.crypto?.randomUUID() || Math.random().toString(36)),
   agencyId: text("agency_id").notNull().references(() => agencies.id),
   name: text("name").notNull(),
-  contactName: text("contact_name"),
+  contact_name: text("contact_name"),
   email: text("email"),
   phone: text("phone"),
   industry: text("industry"),
@@ -112,12 +112,23 @@ export const projects = sqliteTable("projects", {
 export const leads = sqliteTable("leads", {
   id: text("id").primaryKey().$defaultFn(() => globalThis.crypto?.randomUUID() || Math.random().toString(36)),
   agencyId: text("agency_id").notNull().references(() => agencies.id),
+  clientId: text("client_id"),
   name: text("name").notNull(),
   email: text("email"),
   phone: text("phone"),
-  source: text("source"),
+  source: text("source").notNull(),
+  campaign_id: text("campaign_id"), // campaign ID from ads platform
+  campaignName: text("campaign_name"), // campaign name
+  adSetId: text("ad_set_id"), // ad set ID (Facebook) or ad group ID (Google)
+  adSetName: text("ad_set_name"), // ad set/group name
   status: text("status").default("new").notNull(),
+  priority: text("priority").default("medium").notNull(),
+  budget: integer("budget"), // potential project budget in agorot
+  assignedTo: text("assigned_to").references(() => users.id),
   notes: text("notes"),
+  customFields: text("custom_fields", { mode: 'json' }).default('{}'),
+  convertedToClientId: text("converted_to_client_id").references(() => clients.id),
+  convertedToProjectId: text("converted_to_project_id").references(() => projects.id),
   createdAt: integer("created_at").$defaultFn(() => Date.now()).notNull(),
   updatedAt: integer("updated_at").$defaultFn(() => Date.now()).notNull(),
 });
@@ -150,6 +161,33 @@ export const quotes = sqliteTable("quotes", {
   updatedAt: integer("updated_at").$defaultFn(() => Date.now()).notNull(),
 });
 
+// Tasks
+export const tasks = sqliteTable("tasks", {
+  id: text("id").primaryKey().$defaultFn(() => globalThis.crypto?.randomUUID() || Math.random().toString(36)),
+  agencyId: text("agency_id").notNull().references(() => agencies.id),
+  projectId: text("project_id").references(() => projects.id),
+  leadId: text("lead_id").references(() => leads.id),
+  clientId: text("client_id").references(() => clients.id),
+  title: text("title").notNull(),
+  description: text("description"),
+  status: text("status").default("todo").notNull(), // todo, in_progress, review, completed
+  priority: text("priority").default("medium").notNull(), // low, medium, high, urgent
+  type: text("type").default("task").notNull(), // task, meeting, call, email, etc.
+  assignedTo: text("assigned_to").references(() => users.id),
+  createdBy: text("created_by").notNull().references(() => users.id),
+  dueDate: text("due_date"), // ISO date string
+  startTime: text("start_time"), // ISO datetime string for meetings/calls
+  endTime: text("end_time"), // ISO datetime string for meetings/calls
+  location: text("location"), // for meetings
+  notes: text("notes"),
+  tags: text("tags"), // JSON array of strings
+  estimatedHours: integer("estimated_hours"),
+  actualHours: integer("actual_hours"),
+  completedAt: integer("completed_at"), // Unix timestamp
+  createdAt: integer("created_at").$defaultFn(() => Date.now()).notNull(),
+  updatedAt: integer("updated_at").$defaultFn(() => Date.now()).notNull(),
+});
+
 // Export all types
 export type Agency = typeof agencies.$inferSelect;
 export type InsertAgency = typeof agencies.$inferInsert;
@@ -167,3 +205,5 @@ export type Product = typeof products.$inferSelect;
 export type InsertProduct = typeof products.$inferInsert;
 export type Quote = typeof quotes.$inferSelect;
 export type InsertQuote = typeof quotes.$inferInsert;
+export type Task = typeof tasks.$inferSelect;
+export type InsertTask = typeof tasks.$inferInsert;

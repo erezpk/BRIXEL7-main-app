@@ -5,7 +5,7 @@ import { setupWebSocketServer } from "./websocket";
 import express from "express";
 import { emailService } from "./email-service.js";
 import crypto from 'crypto';
-import { setupAuth } from "./replitAuth";
+// import { setupAuth } from "./replitAuth"; // Removed REPLIT auth
 import bcrypt from 'bcrypt';
 import { verifyGoogleToken } from "./google-auth";
 import './types';
@@ -16,16 +16,48 @@ function generateId(): string {
 }
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Auth middleware - skip if SKIP_AUTH is set
-  if (!process.env.SKIP_AUTH) {
-    await setupAuth(app);
-  } else {
-    console.log('Auth setup skipped based on SKIP_AUTH environment variable');
-  }
+  // Auth middleware - REPLIT auth removed, using session-based auth
+  console.log('Using session-based authentication (REPLIT auth removed)');
 
   // Health check endpoint
   app.get('/api/health', (req, res) => {
     res.json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+
+  // Test login endpoint for debugging
+  app.post('/api/auth/test-login', async (req, res) => {
+    try {
+      const { email } = req.body;
+      
+      if (!email) {
+        return res.status(400).json({ message: 'Email required for test login' });
+      }
+
+      // Find existing user
+      let user = await storage.getUserByEmail(email);
+      if (!user) {
+        return res.status(404).json({ message: 'User not found in database' });
+      }
+
+      // Set session
+      req.session.userId = user.id;
+
+      res.json({ 
+        success: true, 
+        message: 'Test login successful',
+        user: {
+          id: user.id,
+          email: user.email,
+          fullName: user.fullName,
+          role: user.role,
+          agencyId: user.agencyId,
+          avatar: user.avatar
+        }
+      });
+    } catch (error) {
+      console.error('Test login error:', error);
+      res.status(500).json({ message: 'Test login failed: ' + error.message });
+    }
   });
 
   // Simple authentication routes for development
@@ -463,6 +495,157 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get single lead by ID
+  app.get('/api/leads/:id', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const lead = await storage.getLead(req.params.id);
+      if (!lead || lead.agencyId !== user.agencyId) {
+        return res.status(404).json({ message: 'ליד לא נמצא' });
+      }
+
+      res.json(lead);
+    } catch (error) {
+      console.error("Error fetching lead:", error);
+      res.status(500).json({ message: 'שגיאה בטעינת הליד' });
+    }
+  });
+
+  // Update lead by ID
+  app.put('/api/leads/:id', async (req: any, res) => {
+    try {
+      console.log('PUT /api/leads/:id called with ID:', req.params.id);
+      console.log('Request body:', req.body);
+      console.log('Session:', req.session?.userId ? 'exists' : 'missing');
+      
+      if (!req.session || !req.session.userId) {
+        console.log('No session or userId');
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      console.log('User found:', user ? 'yes' : 'no');
+      if (!user || !user.agencyId) {
+        console.log('No user or agencyId');
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const leadId = req.params.id;
+      const updatedData = req.body;
+      console.log('Updating lead:', leadId, 'with data:', updatedData);
+
+      // Check if lead exists and belongs to user's agency
+      const existingLead = await storage.getLead(leadId);
+      console.log('Existing lead found:', existingLead ? 'yes' : 'no');
+      if (!existingLead || existingLead.agencyId !== user.agencyId) {
+        console.log('Lead not found or agency mismatch');
+        return res.status(404).json({ message: 'ליד לא נמצא' });
+      }
+
+      // Update the lead - remove updatedAt as it's handled by storage
+      const dataToUpdate = updatedData;
+      console.log('Raw data to update:', dataToUpdate);
+      console.log('Data types check:');
+      Object.entries(dataToUpdate).forEach(([key, value]) => {
+        console.log(`  ${key}: ${value} (${typeof value}) ${value instanceof Date ? '- IS DATE OBJECT!' : ''}`);
+      });
+      
+      const updatedLead = await storage.updateLead(leadId, dataToUpdate);
+      console.log('Update result:', updatedLead ? 'success' : 'failed');
+
+      if (!updatedLead) {
+        console.log('Update failed - no result from storage');
+        return res.status(500).json({ message: 'שגיאה בעדכון הליד' });
+      }
+
+      console.log('Sending success response');
+      res.json(updatedLead);
+    } catch (error) {
+      console.error("Error updating lead:", error);
+      res.status(500).json({ message: 'שגיאה בעדכון הליד' });
+    }
+  });
+
+  // Create meeting for lead
+  app.post('/api/leads/:id/meetings', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const leadId = req.params.id;
+      const { title, date, time, duration, location, notes } = req.body;
+
+      // Check if lead exists and belongs to user's agency
+      const existingLead = await storage.getLead(leadId);
+      if (!existingLead || existingLead.agencyId !== user.agencyId) {
+        return res.status(404).json({ message: 'ליד לא נמצא' });
+      }
+
+      // Create meeting record
+      const meeting = {
+        id: generateId(),
+        leadId,
+        title,
+        date,
+        time,
+        duration: parseInt(duration),
+        location,
+        notes,
+        createdBy: user.id,
+        createdAt: new Date().toISOString(),
+        status: 'scheduled'
+      };
+
+      // Store meeting in lead's notes for backward compatibility
+      const meetingNote = `[פגישה - ${date} ${time}] ${title}${location ? ` (${location})` : ''}${notes ? `\nהערות: ${notes}` : ''}`;
+      const currentNotes = existingLead.notes || '';
+      const updatedNotes = currentNotes ? `${currentNotes}\n\n${meetingNote}` : meetingNote;
+      
+      await storage.updateLead(leadId, {
+        notes: updatedNotes
+      });
+
+      // Also create a task for this meeting
+      const meetingDateTime = new Date(`${date}T${time}`);
+      const endDateTime = new Date(meetingDateTime.getTime() + parseInt(duration) * 60000);
+      
+      await storage.createTask({
+        agencyId: user.agencyId,
+        leadId,
+        title: `פגישה: ${title}`,
+        description: notes || `פגישה עם ${existingLead.name}`,
+        type: 'meeting',
+        status: 'todo',
+        priority: 'medium',
+        createdBy: user.id,
+        dueDate: date,
+        startTime: meetingDateTime.toISOString(),
+        endTime: endDateTime.toISOString(),
+        location: location || undefined,
+        assignedTo: user.id
+      });
+
+      res.json({ meeting, success: true });
+    } catch (error) {
+      console.error("Error creating meeting:", error);
+      res.status(500).json({ message: 'שגיאה ביצירת הפגישה' });
+    }
+  });
+
   app.get('/api/products', async (req: any, res) => {
     try {
       if (!req.session || !req.session.userId) {
@@ -671,6 +854,159 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error) {
       console.error('Setup agency error:', error);
       res.status(500).json({ message: 'שגיאה בהגדרת העסק' });
+    }
+  });
+
+  // Tasks API endpoints
+  app.get('/api/tasks', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const tasks = await storage.getTasksByAgency(user.agencyId);
+      res.json(tasks);
+    } catch (error) {
+      console.error("Error fetching tasks:", error);
+      res.status(500).json([]);
+    }
+  });
+
+  app.post('/api/tasks', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const taskData = {
+        ...req.body,
+        agencyId: user.agencyId,
+        createdBy: user.id
+      };
+
+      const task = await storage.createTask(taskData);
+      res.json(task);
+    } catch (error) {
+      console.error("Error creating task:", error);
+      res.status(500).json({ message: "Failed to create task" });
+    }
+  });
+
+  app.put('/api/tasks/:id', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const taskId = req.params.id;
+      const updatedData = req.body;
+
+      // Check if task exists and belongs to user's agency
+      const existingTask = await storage.getTask(taskId);
+      if (!existingTask || existingTask.agencyId !== user.agencyId) {
+        return res.status(404).json({ message: 'משימה לא נמצאה' });
+      }
+
+      const updatedTask = await storage.updateTask(taskId, updatedData);
+      res.json(updatedTask);
+    } catch (error) {
+      console.error("Error updating task:", error);
+      res.status(500).json({ message: 'שגיאה בעדכון המשימה' });
+    }
+  });
+
+  app.delete('/api/tasks/:id', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const taskId = req.params.id;
+
+      // Check if task exists and belongs to user's agency
+      const existingTask = await storage.getTask(taskId);
+      if (!existingTask || existingTask.agencyId !== user.agencyId) {
+        return res.status(404).json({ message: 'משימה לא נמצאה' });
+      }
+
+      await storage.deleteTask(taskId);
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting task:", error);
+      res.status(500).json({ message: 'שגיאה במחיקת המשימה' });
+    }
+  });
+
+  app.post('/api/tasks/delete-multiple', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const { taskIds } = req.body;
+      
+      // Verify all tasks belong to user's agency
+      for (const taskId of taskIds) {
+        const task = await storage.getTask(taskId);
+        if (!task || task.agencyId !== user.agencyId) {
+          return res.status(404).json({ message: 'משימה לא נמצאה' });
+        }
+        await storage.deleteTask(taskId);
+      }
+
+      res.json({ success: true });
+    } catch (error) {
+      console.error("Error deleting tasks:", error);
+      res.status(500).json({ message: 'שגיאה במחיקת המשימות' });
+    }
+  });
+
+  // Get tasks for specific lead
+  app.get('/api/leads/:id/tasks', async (req: any, res) => {
+    try {
+      if (!req.session || !req.session.userId) {
+        return res.status(401).json({ message: 'לא מחובר' });
+      }
+
+      const user = await storage.getUser(req.session.userId);
+      if (!user || !user.agencyId) {
+        return res.status(401).json({ message: 'משתמש לא נמצא' });
+      }
+
+      const leadId = req.params.id;
+      const tasks = await storage.getTasksByLead(leadId);
+      
+      // Filter by agency for security
+      const agencyTasks = tasks.filter(task => task.agencyId === user.agencyId);
+      res.json(agencyTasks);
+    } catch (error) {
+      console.error("Error fetching lead tasks:", error);
+      res.status(500).json([]);
     }
   });
 
