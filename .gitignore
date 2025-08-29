@@ -11,3 +11,10 @@ vite.config.ts.*
 .env.production
 migrations
 *.md
+# Development and Migration Scripts
+*.disabled
+manual-login.html
+check-*.js
+fix-*.js
+add-columns.js
+
