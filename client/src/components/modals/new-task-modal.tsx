@@ -19,9 +19,10 @@ interface NewTaskModalProps {
   isOpen: boolean;
   onClose: () => void;
   editingTask?: Task | null;
+  leadId?: string;
 }
 
-export default function NewTaskModal({ isOpen, onClose, editingTask }: NewTaskModalProps) {
+export default function NewTaskModal({ isOpen, onClose, editingTask, leadId }: NewTaskModalProps) {
   const queryClient = useQueryClient();
   const { toast } = useToast();
   
@@ -31,6 +32,7 @@ export default function NewTaskModal({ isOpen, onClose, editingTask }: NewTaskMo
     status: "new" as const,
     priority: "medium" as const,
     clientId: "none",
+    leadIdForm: "none", // For when creating from tasks page
     projectId: "none",
     assignedTo: "none",
     dueDate: null as Date | null,
@@ -58,6 +60,7 @@ export default function NewTaskModal({ isOpen, onClose, editingTask }: NewTaskMo
         status: "new",
         priority: "medium",
         clientId: "none",
+        leadIdForm: "none",
         projectId: "none",
         assignedTo: "none",
         dueDate: null,
@@ -69,6 +72,16 @@ export default function NewTaskModal({ isOpen, onClose, editingTask }: NewTaskMo
   // Fetch clients
   const { data: clients } = useQuery<Client[]>({
     queryKey: ['/api/clients'],
+  });
+
+  // Fetch leads 
+  const { data: leads } = useQuery({
+    queryKey: ['/api/leads'],
+    queryFn: async () => {
+      const response = await fetch('/api/leads', { credentials: 'include' });
+      if (!response.ok) throw new Error('Failed to fetch leads');
+      return response.json();
+    },
   });
 
   // Fetch projects (filtered by selected client if any)
@@ -116,6 +129,7 @@ export default function NewTaskModal({ isOpen, onClose, editingTask }: NewTaskMo
       status: "new",
       priority: "medium",
       clientId: "none",
+      leadIdForm: "none",
       projectId: "none",
       assignedTo: "none",
       dueDate: null,
@@ -146,6 +160,7 @@ export default function NewTaskModal({ isOpen, onClose, editingTask }: NewTaskMo
       description: formData.description || undefined,
       status: formData.status,
       priority: formData.priority,
+      leadId: leadId || (formData.leadIdForm === "none" ? undefined : formData.leadIdForm) || undefined,
       clientId: formData.clientId === "none" ? undefined : formData.clientId || undefined,
       projectId: formData.projectId === "none" ? undefined : formData.projectId || undefined,
       assignedTo: formData.assignedTo === "none" ? undefined : formData.assignedTo || undefined,
@@ -164,7 +179,7 @@ export default function NewTaskModal({ isOpen, onClose, editingTask }: NewTaskMo
     <Dialog open={isOpen} onOpenChange={onClose}>
       <DialogContent className="max-w-lg max-h-[90vh] overflow-y-auto" data-testid="new-task-modal">
         <DialogHeader>
-          <DialogTitle className="text-right font-rubik">משימה חדשה</DialogTitle>
+          <DialogTitle className="text-right font-rubik">{leadId ? 'משימה חדשה לליד' : 'משימה חדשה'}</DialogTitle>
         </DialogHeader>
         
         <form onSubmit={handleSubmit} className="space-y-4">
@@ -226,22 +241,54 @@ export default function NewTaskModal({ isOpen, onClose, editingTask }: NewTaskMo
             </div>
           </div>
           
-          <div className="space-y-2">
-            <Label htmlFor="clientId" className="text-right">לקוח</Label>
-            <Select value={formData.clientId} onValueChange={(value) => handleInputChange('clientId', value)}>
-              <SelectTrigger data-testid="select-client">
-                <SelectValue placeholder="בחר לקוח" />
-              </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="no-client">ללא לקוח</SelectItem>
-                {clients?.map((client) => (
-                  <SelectItem key={client.id} value={client.id || "none"}>
-                    {client.name}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+          {!leadId && (
+            <div className="space-y-2">
+              <Label htmlFor="clientId" className="text-right">לקוח</Label>
+              <Select value={formData.clientId} onValueChange={(value) => handleInputChange('clientId', value)}>
+                <SelectTrigger data-testid="select-client">
+                  <SelectValue placeholder="בחר לקוח" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="no-client">ללא לקוח</SelectItem>
+                  {clients?.map((client) => (
+                    <SelectItem key={client.id} value={client.id || "none"}>
+                      {client.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+          
+          {!leadId && (
+            <div className="space-y-2">
+              <Label htmlFor="leadIdForm" className="text-right">ליד</Label>
+              <Select value={formData.leadIdForm} onValueChange={(value) => handleInputChange('leadIdForm', value)}>
+                <SelectTrigger data-testid="select-lead">
+                  <SelectValue placeholder="בחר ליד" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="none">ללא ליד</SelectItem>
+                  {leads?.map((lead: any) => (
+                    <SelectItem key={lead.id} value={lead.id || "none"}>
+                      {lead.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
+          )}
+
+          {leadId && (
+            <div className="p-3 bg-blue-50 rounded-lg border">
+              <p className="text-sm text-blue-800 text-right">
+                <strong>משימה זו תקושר לליד הנוכחי</strong>
+              </p>
+              <p className="text-xs text-blue-600 text-right mt-1">
+                המשימה תופיע בעמוד המשימות עם קישור לליד
+              </p>
+            </div>
+          )}
           
           {formData.clientId && formData.clientId !== "none" && (
             <div className="space-y-2">

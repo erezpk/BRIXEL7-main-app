@@ -204,7 +204,7 @@ export default function Team() {
   };
 
   return (
-    <div className="space-y-6" data-testid="team-page">
+    <div className="space-y-6" data-testid="team-page" dir="rtl">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>

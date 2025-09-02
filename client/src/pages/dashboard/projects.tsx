@@ -14,7 +14,7 @@ import { Card, CardHeader, CardContent } from "@/components/ui/card";
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
-import { Plus } from "lucide-react";
+import { Plus, Grid, List, Calendar, User, DollarSign, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/use-auth";
 import { apiRequest } from "@/lib/queryClient";
@@ -31,6 +31,7 @@ export default function Projects() {
   const [status, setStatus] = useState<"all" | string>("all");
   const [showNewProjectModal, setShowNewProjectModal] = useState(false);
   const [showNewClientModal, setShowNewClientModal] = useState(false);
+  const [viewMode, setViewMode] = useState<"grid" | "table">("table");
 
   // Project form state
   const [projectData, setProjectData] = useState({
@@ -214,63 +215,229 @@ export default function Projects() {
   };
 
   return (
-    <div className="p-6 space-y-8">
+    <div className="p-6 space-y-8" dir="rtl">
       <div className="flex justify-between items-center">
-        <h1 className="text-3xl font-bold">ניהול פרויקטים</h1>
-        <Button size="lg" onClick={() => setShowNewProjectModal(true)}>
-          <Plus className="h-5 w-5" />
+        <h1 className="text-3xl font-bold text-gray-900">ניהול פרויקטים</h1>
+        <Button size="lg" onClick={() => setShowNewProjectModal(true)} className="bg-blue-600 hover:bg-blue-700">
+          <Plus className="h-5 w-5 ml-2" />
           פרויקט חדש
         </Button>
       </div>
 
-      <div className="flex flex-col sm:flex-row gap-4">
-        <Input
-          placeholder="חפש פרויקטים..."
-          value={search}
-          onChange={(e) => setSearch(e.target.value)}
-          className="flex-1"
-        />
-        <Select value={status} onValueChange={setStatus}>
-          <SelectTrigger className="w-full sm:w-48">סטטוס</SelectTrigger>
-          <SelectContent>
-            <SelectItem value="all">כל הסטטוסים</SelectItem>
-            <SelectItem value="planning">תכנון</SelectItem>
-            <SelectItem value="active">פעיל</SelectItem>
-            <SelectItem value="completed">הושלם</SelectItem>
-            <SelectItem value="cancelled">בוטל</SelectItem>
-          </SelectContent>
-        </Select>
+      <div className="flex flex-col sm:flex-row gap-4 items-center justify-between">
+        <div className="flex gap-4 items-center flex-1">
+          <Input
+            placeholder="חפש פרויקטים..."
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            className="flex-1 max-w-md"
+          />
+          <Select value={status} onValueChange={setStatus}>
+            <SelectTrigger className="w-48">
+              <SelectValue placeholder="סטטוס" />
+            </SelectTrigger>
+            <SelectContent>
+              <SelectItem value="all">כל הסטטוסים</SelectItem>
+              <SelectItem value="planning">תכנון</SelectItem>
+              <SelectItem value="active">פעיל</SelectItem>
+              <SelectItem value="completed">הושלם</SelectItem>
+              <SelectItem value="cancelled">בוטל</SelectItem>
+            </SelectContent>
+          </Select>
+        </div>
+        
+        {/* View Toggle */}
+        <div className="flex gap-1 bg-gray-100 p-1 rounded-lg">
+          <Button
+            variant={viewMode === "table" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("table")}
+            className={viewMode === "table" ? "bg-white shadow-sm" : ""}
+          >
+            <List className="h-4 w-4 ml-1" />
+            טבלה
+          </Button>
+          <Button
+            variant={viewMode === "grid" ? "default" : "ghost"}
+            size="sm"
+            onClick={() => setViewMode("grid")}
+            className={viewMode === "grid" ? "bg-white shadow-sm" : ""}
+          >
+            <Grid className="h-4 w-4 ml-1" />
+            כרטיסים
+          </Button>
+        </div>
       </div>
 
       {isLoading ? (
-        <p className="text-center py-12">טוען פרויקטים…</p>
+        <div className="text-center py-12">
+          <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-600 mx-auto mb-4"></div>
+          <p className="text-gray-600">טוען פרויקטים...</p>
+        </div>
       ) : filtered.length === 0 ? (
         <div className="text-center py-12">
-          <p>אין פרויקטים להצגה.</p>
+          <div className="text-4xl mb-4">📁</div>
+          <h3 className="text-lg font-medium text-gray-900 mb-2">אין פרויקטים להצגה</h3>
+          <p className="text-gray-500 mb-6">התחל על ידי יצירת הפרויקט הראשון שלך</p>
+          <Button onClick={() => setShowNewProjectModal(true)} className="bg-blue-600 hover:bg-blue-700">
+            <Plus className="h-4 w-4 ml-2" />
+            צור פרויקט חדש
+          </Button>
         </div>
+      ) : viewMode === "table" ? (
+        /* Table View */
+        <Card className="bg-white shadow-lg border-0">
+          <div className="overflow-x-auto">
+            <table className="w-full">
+              <thead className="bg-gray-50 border-b border-gray-200">
+                <tr>
+                  <th className="text-right py-4 px-6 font-medium text-gray-900">שם הפרויקט</th>
+                  <th className="text-right py-4 px-6 font-medium text-gray-900">לקוח</th>
+                  <th className="text-right py-4 px-6 font-medium text-gray-900">סוג</th>
+                  <th className="text-right py-4 px-6 font-medium text-gray-900">סטטוס</th>
+                  <th className="text-right py-4 px-6 font-medium text-gray-900">תאריך יצירה</th>
+                  <th className="text-center py-4 px-6 font-medium text-gray-900">פעולות</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-gray-200">
+                {filtered.map((p) => (
+                  <tr key={p.id} className="hover:bg-gray-50 transition-colors">
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                          <span className="text-blue-600 font-bold text-sm">
+                            {p.name.charAt(0).toUpperCase()}
+                          </span>
+                        </div>
+                        <div>
+                          <div className="font-medium text-gray-900">{p.name}</div>
+                          <div className="text-sm text-gray-500 max-w-xs truncate">
+                            {p.description || 'ללא תיאור'}
+                          </div>
+                        </div>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-2">
+                        <User className="h-4 w-4 text-gray-400" />
+                        <span className="text-gray-900">{p.client?.name ?? "לא מוקצה"}</span>
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="inline-flex items-center gap-1 px-2 py-1 bg-purple-100 text-purple-800 text-xs font-medium rounded-full">
+                        {p.type === 'website' ? '🌐 אתר' : 
+                         p.type === 'mobile-app' ? '📱 אפליקציה' :
+                         p.type === 'ecommerce' ? '🛒 חנות' : p.type}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className={`inline-flex items-center gap-1 px-2 py-1 text-xs font-medium rounded-full ${
+                        p.status === 'active' ? 'bg-green-100 text-green-800' :
+                        p.status === 'planning' ? 'bg-yellow-100 text-yellow-800' :
+                        p.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                        'bg-gray-100 text-gray-800'
+                      }`}>
+                        {p.status === 'active' ? '🟢 פעיל' :
+                         p.status === 'planning' ? '🟡 תכנון' :
+                         p.status === 'completed' ? '🔵 הושלם' : p.status}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center gap-2 text-sm text-gray-600">
+                        <Calendar className="h-4 w-4" />
+                        {new Date(p.createdAt).toLocaleDateString('he-IL', {
+                          year: 'numeric',
+                          month: 'short',
+                          day: 'numeric'
+                        })}
+                      </div>
+                    </td>
+                    <td className="py-4 px-6">
+                      <div className="flex items-center justify-center gap-2">
+                        <Link href={`/dashboard/project-details/${p.id}`}>
+                          <Button size="sm" variant="outline" className="hover:bg-blue-50 hover:border-blue-300">
+                            <Eye className="h-4 w-4 ml-1" />
+                            צפה
+                          </Button>
+                        </Link>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
+          
+          {/* Table Summary Footer */}
+          <div className="bg-gray-50 px-6 py-4 border-t border-gray-200">
+            <div className="flex items-center justify-between text-sm text-gray-600">
+              <div>סה"כ פרויקטים: {filtered.length}</div>
+              <div className="flex gap-4">
+                <span className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-green-500 rounded-full"></div>
+                  פעילים: {filtered.filter(p => p.status === 'active').length}
+                </span>
+                <span className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-yellow-500 rounded-full"></div>
+                  בתכנון: {filtered.filter(p => p.status === 'planning').length}
+                </span>
+                <span className="flex items-center gap-1">
+                  <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
+                  הושלמו: {filtered.filter(p => p.status === 'completed').length}
+                </span>
+              </div>
+            </div>
+          </div>
+        </Card>
       ) : (
+        /* Grid View */
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filtered.map((p) => (
-            <Card key={p.id} className="h-full flex flex-col justify-between">
+            <Card key={p.id} className="h-full flex flex-col justify-between hover:shadow-lg transition-all duration-200 border-0 shadow-md">
               <CardHeader className="pb-2">
-                <h2 className="text-xl font-semibold">{p.name}</h2>
-                <p className="text-sm text-muted-foreground mt-1">
-                  {p.client?.name ?? "—"}
-                </p>
+                <div className="flex items-center gap-3 mb-2">
+                  <div className="w-10 h-10 bg-blue-100 rounded-lg flex items-center justify-center">
+                    <span className="text-blue-600 font-bold text-sm">
+                      {p.name.charAt(0).toUpperCase()}
+                    </span>
+                  </div>
+                  <div className="flex-1">
+                    <h2 className="text-xl font-semibold text-gray-900">{p.name}</h2>
+                    <p className="text-sm text-gray-500 mt-1 flex items-center gap-1">
+                      <User className="h-3 w-3" />
+                      {p.client?.name ?? "לא מוקצה"}
+                    </p>
+                  </div>
+                </div>
               </CardHeader>
-              <CardContent className="flex-1">
-                <div className="space-y-1">
-                  <p>
-                    <strong>סטטוס:</strong> {p.status}
-                  </p>
-                  <p>
-                    <strong>סוג:</strong> {p.type}
-                  </p>
+              <CardContent className="flex-1 space-y-3">
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">סטטוס:</span>
+                  <div className={`px-2 py-1 text-xs font-medium rounded-full ${
+                    p.status === 'active' ? 'bg-green-100 text-green-800' :
+                    p.status === 'planning' ? 'bg-yellow-100 text-yellow-800' :
+                    p.status === 'completed' ? 'bg-blue-100 text-blue-800' :
+                    'bg-gray-100 text-gray-800'
+                  }`}>
+                    {p.status}
+                  </div>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">סוג:</span>
+                  <span className="text-sm font-medium text-gray-900">{p.type}</span>
+                </div>
+                <div className="flex items-center justify-between">
+                  <span className="text-sm text-gray-600">נוצר:</span>
+                  <span className="text-sm text-gray-900 flex items-center gap-1">
+                    <Calendar className="h-3 w-3" />
+                    {new Date(p.createdAt).toLocaleDateString('he-IL')}
+                  </span>
                 </div>
               </CardContent>
               <div className="p-4 pt-0">
                 <Link href={`/dashboard/project-details/${p.id}`}>
-                  <Button variant="outline" className="w-full">
+                  <Button variant="outline" className="w-full hover:bg-blue-50 hover:border-blue-300">
+                    <Eye className="h-4 w-4 ml-2" />
                     פתח פרטי פרויקט
                   </Button>
                 </Link>

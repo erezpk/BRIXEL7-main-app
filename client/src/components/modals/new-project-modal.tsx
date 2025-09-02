@@ -48,7 +48,7 @@ export default function NewProjectModal({ isOpen, onClose }: NewProjectModalProp
   // Create new client mutation
   const createClientMutation = useMutation({
     mutationFn: async (data: Omit<InsertClient, 'agencyId'>) => {
-      const response = await apiRequest('POST', '/api/clients', data);
+      const response = await apiRequest('/api/clients', 'POST', data);
       return response.json();
     },
     onSuccess: (newClient) => {
@@ -73,7 +73,7 @@ export default function NewProjectModal({ isOpen, onClose }: NewProjectModalProp
   // Create project mutation
   const createProjectMutation = useMutation({
     mutationFn: async (data: Omit<InsertProject, 'agencyId'>) => {
-      const response = await apiRequest('POST', '/api/projects', data);
+      const response = await apiRequest('/api/projects', 'POST', data);
       return response.json();
     },
     onSuccess: () => {

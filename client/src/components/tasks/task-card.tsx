@@ -262,71 +262,92 @@ export function TaskCard({ task, users, projects, onEdit, onDelete, isTableView 
 
       {/* Time Tracking Modal */}
       <Dialog open={showTimeModal} onOpenChange={setShowTimeModal}>
-        <DialogContent className="max-w-2xl max-h-[80vh] overflow-y-auto">
+        <DialogContent className="max-w-xl max-h-[85vh] overflow-y-auto">
           <DialogHeader>
-            <DialogTitle className="text-right font-rubik">מעקב זמן - {task.title}</DialogTitle>
+            <DialogTitle className="text-right font-rubik text-lg">{task.title}</DialogTitle>
           </DialogHeader>
 
-          <div className="space-y-6">
-            {/* Current Status */}
-            <div className="bg-gray-50 p-4 rounded-lg">
-              <div className="flex items-center justify-between mb-3">
-                <h3 className="font-medium text-right">סטטוס נוכחי</h3>
-                <Badge className={`${PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS]}`}>
-                  {PRIORITY_LABELS[task.priority as keyof typeof PRIORITY_LABELS]}
-                </Badge>
+          <div className="space-y-4">
+            {/* Task Description with Clear Action */}
+            <div className="bg-blue-50 p-3 rounded-lg border-l-4 border-blue-400">
+              <div className="text-right">
+                <p className="font-medium text-blue-900 mb-1">מה צריך לעשות?</p>
+                <p className="text-blue-800 text-sm">
+                  {task.description || "לא הוגדר תיאור מפורט למשימה זו"}
+                </p>
               </div>
+            </div>
 
-              <div className="grid grid-cols-2 gap-4 mb-4">
-                <div className="text-center">
-                  <div className="text-2xl font-bold text-blue-600">
-                    {formatDuration(getTotalTime())}
+            {/* Assigned and Related Info - Compact */}
+            <div className="grid grid-cols-1 gap-2 text-sm">
+              {assignedUser && (
+                <div className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
+                  <span className="text-gray-600">אחראי:</span>
+                  <div className="flex items-center gap-2">
+                    <Avatar className="h-5 w-5">
+                      <AvatarImage src={assignedUser.avatar || ''} />
+                      <AvatarFallback className="text-xs">
+                        {assignedUser.fullName?.split(' ').map(n => n[0]).join('') || 'U'}
+                      </AvatarFallback>
+                    </Avatar>
+                    <span className="font-medium">{assignedUser.fullName}</span>
                   </div>
-                  <div className="text-sm text-muted-foreground">זמן כולל</div>
                 </div>
+              )}
+              
+              {project && (
+                <div className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
+                  <span className="text-gray-600">פרויקט:</span>
+                  <span className="font-medium">{project.name}</span>
+                </div>
+              )}
 
-                {task.estimatedHours && (
-                  <div className="text-center">
-                    <div className="text-2xl font-bold text-orange-600">
-                      {task.estimatedHours}h
-                    </div>
-                    <div className="text-sm text-muted-foreground">זמן משוער</div>
-                  </div>
-                )}
+              {task.leadId && (
+                <div className="flex items-center justify-between bg-gray-50 px-3 py-2 rounded">
+                  <span className="text-gray-600">ליד:</span>
+                  <span className="font-medium">#{task.leadId.slice(-6)}</span>
+                </div>
+              )}
+            </div>
+
+            {/* Time Status - Minimalistic */}
+            <div className="bg-white border rounded-lg p-3">
+              <div className="flex items-center justify-between mb-3">
+                <Badge className={`text-xs ${PRIORITY_COLORS[task.priority as keyof typeof PRIORITY_COLORS]}`}>
+                  עדיפות {PRIORITY_LABELS[task.priority as keyof typeof PRIORITY_LABELS]}
+                </Badge>
+                <div className="text-right">
+                  <div className="text-2xl font-bold text-blue-600">{formatDuration(getTotalTime())}</div>
+                  {task.estimatedHours && (
+                    <div className="text-xs text-gray-500">מתוך {task.estimatedHours} שעות</div>
+                  )}
+                </div>
               </div>
 
-              {/* Timer Controls */}
+              {/* Timer Controls - Simplified */}
               {!isCompleted && (
-                <div className="flex justify-center gap-3">
+                <div className="flex justify-center">
                   {isActive ? (
-                    <>
-                      <div className="flex items-center gap-2 bg-green-100 text-green-800 px-4 py-2 rounded-lg">
-                        <Timer className="h-4 w-4" />
-                        <span className="font-mono">{formatActiveTimer(isActive)}</span>
+                    <div className="flex items-center gap-3">
+                      <div className="flex items-center gap-2 bg-green-50 border border-green-200 text-green-800 px-4 py-2 rounded-full">
+                        <div className="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                        <span className="font-mono text-lg font-bold">{formatActiveTimer(isActive)}</span>
                       </div>
                       <Button
                         variant="outline"
-                        onClick={() => handleTimerAction('pause')}
-                        className="flex items-center gap-2"
-                      >
-                        <Pause className="h-4 w-4" />
-                        השהה
-                      </Button>
-                      <Button
-                        variant="outline"
                         onClick={() => handleTimerAction('stop')}
-                        className="flex items-center gap-2"
+                        size="sm"
+                        className="rounded-full px-4"
                       >
-                        <RotateCcw className="h-4 w-4" />
                         עצור
                       </Button>
-                    </>
+                    </div>
                   ) : (
                     <Button
                       onClick={() => handleTimerAction('start')}
-                      className="flex items-center gap-2 bg-green-600 hover:bg-green-700"
+                      className="bg-green-600 hover:bg-green-700 rounded-full px-6 py-2"
                     >
-                      <Play className="h-4 w-4" />
+                      <Play className="h-4 w-4 ml-2" />
                       התחל משימה
                     </Button>
                   )}
@@ -334,51 +355,47 @@ export function TaskCard({ task, users, projects, onEdit, onDelete, isTableView 
               )}
 
               {isCompleted && (
-                <div className="text-center py-4">
-                  <Badge className="bg-green-100 text-green-800">
-                    המשימה הושלמה
+                <div className="text-center">
+                  <Badge className="bg-green-100 text-green-800 px-3 py-1">
+                    ✅ הושלם
                   </Badge>
                 </div>
               )}
             </div>
 
-            {/* Time History */}
-            <div>
-              <h3 className="font-medium text-right mb-3">היסטוריית זמנים</h3>
-              <div className="space-y-2 max-h-60 overflow-y-auto">
-                {timeEntries.length === 0 ? (
-                  <div className="text-center text-muted-foreground py-8">
-                    עדיין לא נרשמו זמנים למשימה זו
-                  </div>
-                ) : (
-                  timeEntries.map((entry) => (
-                    <div key={entry.id} className="flex items-center justify-between p-3 bg-gray-50 rounded-lg">
+            {/* Time History - Minimalistic */}
+            {timeEntries.length > 0 && (
+              <div>
+                <h3 className="font-medium text-right mb-2 text-sm text-gray-600">היסטוריה</h3>
+                <div className="space-y-1 max-h-40 overflow-y-auto">
+                  {timeEntries.map((entry) => (
+                    <div key={entry.id} className="flex items-center justify-between p-2 bg-gray-50 rounded text-xs">
                       <div className="text-right">
-                        <div className="text-sm font-medium">
-                          {format(new Date(entry.startTime), 'dd/MM/yyyy HH:mm', { locale: he })}
-                        </div>
+                        <span className="text-gray-600">
+                          {format(new Date(entry.startTime), 'dd/MM/yyyy', { locale: he })}
+                        </span>
                         {entry.endTime && (
-                          <div className="text-xs text-muted-foreground">
-                            עד {format(new Date(entry.endTime), 'HH:mm', { locale: he })}
-                          </div>
+                          <span className="text-gray-500 mr-2">
+                            {format(new Date(entry.startTime), 'HH:mm', { locale: he })}-{format(new Date(entry.endTime), 'HH:mm', { locale: he })}
+                          </span>
                         )}
                       </div>
-                      <div className="flex items-center gap-2">
+                      <div>
                         {entry.duration ? (
-                          <Badge variant="secondary">
+                          <span className="font-mono font-medium text-blue-600">
                             {formatDuration(entry.duration)}
-                          </Badge>
+                          </span>
                         ) : (
-                          <Badge className="bg-green-100 text-green-800">
-                            פעיל כעת
-                          </Badge>
+                          <span className="text-green-600 font-medium">
+                            פעיל
+                          </span>
                         )}
                       </div>
                     </div>
-                  ))
-                )}
+                  ))}
+                </div>
               </div>
-            </div>
+            )}
           </div>
         </DialogContent>
       </Dialog>

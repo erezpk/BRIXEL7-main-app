@@ -1,14 +1,24 @@
 import {
-  agencies, users, clients, projects, leads, passwordResetTokens, products, quotes, tasks,
+  agencies, users, clients, contacts, clientUsers, projects, leads, passwordResetTokens, products, quotes, tasks,
+  timeEntries, oauthTokens, campaigns, campaignMetrics, projectExpenses, projectRevenue, leadGenCampaigns,
   type Agency, type InsertAgency,
   type User, type InsertUser,
   type Client, type InsertClient,
+  type Contact, type InsertContact,
+  type ClientUser, type InsertClientUser,
   type Product, type InsertProduct,
   type Quote, type InsertQuote,
   type Task, type InsertTask,
   type UpsertUser,
   type Project, type InsertProject,
   type Lead, type InsertLead,
+  type TimeEntry, type InsertTimeEntry,
+  type OAuthToken, type InsertOAuthToken,
+  type Campaign, type InsertCampaign,
+  type CampaignMetrics, type InsertCampaignMetrics,
+  type ProjectExpense, type InsertProjectExpense,
+  type ProjectRevenue, type InsertProjectRevenue,
+  type LeadGenCampaign, type InsertLeadGenCampaign,
 } from "@shared/schema-sqlite";
 import { db } from "./db";
 import { eq, and, desc, asc, like, gte, lte, isNull, or, sql, gt } from "drizzle-orm";
@@ -39,9 +49,14 @@ export interface IStorage {
   // Clients
   getClient(id: string): Promise<Client | undefined>;
   getClientsByAgency(agencyId: string): Promise<Client[]>;
-  createClient(client: InsertClient): Promise<Client>;
+  createClient(client: InsertClient, userId: string): Promise<Client>;
   updateClient(id: string, client: Partial<InsertClient>): Promise<Client>;
   deleteClient(id: string): Promise<void>;
+
+  // Contacts
+  getContact(id: string): Promise<Contact | undefined>;
+  getContactsByAgency(agencyId: string): Promise<Contact[]>;
+  createContact(contact: InsertContact): Promise<Contact>;
 
   // Projects
   getProject(id: string): Promise<Project | undefined>;
@@ -101,6 +116,67 @@ export interface IStorage {
   createTask(task: InsertTask): Promise<Task>;
   updateTask(id: string, task: Partial<InsertTask>): Promise<Task>;
   deleteTask(id: string): Promise<void>;
+
+  // Client Users
+  getClientUser(id: string): Promise<ClientUser | undefined>;
+  getClientUserByUsername(username: string): Promise<ClientUser | undefined>;
+  getClientUserByEmail(email: string): Promise<ClientUser | undefined>;
+  getClientUserByClientId(clientId: string): Promise<ClientUser | undefined>;
+  createClientUser(clientUser: InsertClientUser): Promise<ClientUser>;
+  updateClientUser(id: string, clientUser: Partial<InsertClientUser>): Promise<ClientUser>;
+  deleteClientUser(id: string): Promise<void>;
+  validateClientPassword(password: string, hash: string): Promise<boolean>;
+
+  // Analytics - Time Entries
+  getTimeEntry(id: string): Promise<TimeEntry | undefined>;
+  getTimeEntriesByProject(projectId: string): Promise<TimeEntry[]>;
+  getTimeEntriesByUser(userId: string): Promise<TimeEntry[]>;
+  createTimeEntry(timeEntry: InsertTimeEntry): Promise<TimeEntry>;
+  updateTimeEntry(id: string, timeEntry: Partial<InsertTimeEntry>): Promise<TimeEntry>;
+  deleteTimeEntry(id: string): Promise<void>;
+
+  // Analytics - OAuth Tokens
+  getOAuthToken(id: string): Promise<OAuthToken | undefined>;
+  getOAuthTokens(agencyId: string, platform: string): Promise<OAuthToken[]>;
+  createOAuthToken(token: InsertOAuthToken): Promise<OAuthToken>;
+  updateOAuthToken(id: string, token: Partial<InsertOAuthToken>): Promise<OAuthToken>;
+  deleteOAuthToken(id: string): Promise<void>;
+
+  // Analytics - Campaigns
+  getCampaign(id: string): Promise<Campaign | undefined>;
+  getCampaignsByProject(projectId: string): Promise<Campaign[]>;
+  getCampaignsByAgency(agencyId: string): Promise<Campaign[]>;
+  createCampaign(campaign: InsertCampaign): Promise<Campaign>;
+  updateCampaign(id: string, campaign: Partial<InsertCampaign>): Promise<Campaign>;
+  deleteCampaign(id: string): Promise<void>;
+
+  // Analytics - Campaign Metrics
+  getCampaignMetrics(campaignId: string, startDate?: string, endDate?: string): Promise<CampaignMetrics[]>;
+  createCampaignMetrics(metrics: InsertCampaignMetrics): Promise<CampaignMetrics>;
+  updateCampaignMetrics(id: string, metrics: Partial<InsertCampaignMetrics>): Promise<CampaignMetrics>;
+
+  // Analytics - Project Expenses
+  getProjectExpense(id: string): Promise<ProjectExpense | undefined>;
+  getProjectExpenses(projectId: string): Promise<ProjectExpense[]>;
+  createProjectExpense(expense: InsertProjectExpense): Promise<ProjectExpense>;
+  updateProjectExpense(id: string, expense: Partial<InsertProjectExpense>): Promise<ProjectExpense>;
+  deleteProjectExpense(id: string): Promise<void>;
+
+  // Analytics - Project Revenue
+  getProjectRevenue(projectId: string): Promise<ProjectRevenue[]>;
+  createProjectRevenue(revenue: InsertProjectRevenue): Promise<ProjectRevenue>;
+  updateProjectRevenue(id: string, revenue: Partial<InsertProjectRevenue>): Promise<ProjectRevenue>;
+  deleteProjectRevenue(id: string): Promise<void>;
+
+  // Analytics - Lead Gen Campaigns
+  getLeadGenCampaign(id: string): Promise<LeadGenCampaign | undefined>;
+  getLeadGenCampaignsByProject(projectId: string): Promise<LeadGenCampaign[]>;
+  createLeadGenCampaign(campaign: InsertLeadGenCampaign): Promise<LeadGenCampaign>;
+  updateLeadGenCampaign(id: string, campaign: Partial<InsertLeadGenCampaign>): Promise<LeadGenCampaign>;
+    deleteLeadGenCampaign(id: string): Promise<void>;
+
+  // Activity Log
+  getRecentActivityByAgency(agencyId: string, limit?: number): Promise<any[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -242,11 +318,14 @@ export class DatabaseStorage implements IStorage {
     return this.db.select().from(clients).where(eq(clients.agencyId, agencyId)).orderBy(asc(clients.name));
   }
 
-  async createClient(insertClient: InsertClient): Promise<Client> {
+  async createClient(insertClient: InsertClient, userId: string): Promise<Client> {
     const [client] = await this.db
       .insert(clients)
       .values(insertClient)
       .returning();
+
+    // Log activity - functionality removed
+
     return client;
   }
 
@@ -261,6 +340,24 @@ export class DatabaseStorage implements IStorage {
 
   async deleteClient(id: string): Promise<void> {
     await this.db.delete(clients).where(eq(clients.id, id));
+  }
+
+  // Contacts
+  async getContact(id: string): Promise<Contact | undefined> {
+    const [contact] = await this.db.select().from(contacts).where(eq(contacts.id, id));
+    return contact || undefined;
+  }
+
+  async getContactsByAgency(agencyId: string): Promise<Contact[]> {
+    return this.db.select().from(contacts).where(eq(contacts.agencyId, agencyId)).orderBy(desc(contacts.createdAt));
+  }
+
+  async createContact(insertContact: InsertContact): Promise<Contact> {
+    const [contact] = await this.db
+      .insert(contacts)
+      .values(insertContact)
+      .returning();
+    return contact;
   }
 
   async getProject(id: string): Promise<Project | undefined> {
@@ -560,6 +657,325 @@ export class DatabaseStorage implements IStorage {
 
   async deleteTask(id: string): Promise<void> {
     await this.db.delete(tasks).where(eq(tasks.id, id));
+  }
+
+  // Client Users methods
+  async getClientUser(id: string): Promise<ClientUser | undefined> {
+    const [clientUser] = await this.db.select().from(clientUsers).where(eq(clientUsers.id, id));
+    return clientUser || undefined;
+  }
+
+  async getClientUserByUsername(username: string): Promise<ClientUser | undefined> {
+    const [clientUser] = await this.db.select().from(clientUsers).where(eq(clientUsers.username, username));
+    return clientUser || undefined;
+  }
+
+  async getClientUserByEmail(email: string): Promise<ClientUser | undefined> {
+    const [clientUser] = await this.db.select().from(clientUsers).where(eq(clientUsers.email, email));
+    return clientUser || undefined;
+  }
+
+  async getClientUserByClientId(clientId: string): Promise<ClientUser | undefined> {
+    const [clientUser] = await this.db.select().from(clientUsers).where(eq(clientUsers.clientId, clientId));
+    return clientUser || undefined;
+  }
+
+  async createClientUser(insertClientUser: InsertClientUser): Promise<ClientUser> {
+    const [clientUser] = await this.db
+      .insert(clientUsers)
+      .values(insertClientUser as any)
+      .returning();
+    return clientUser;
+  }
+
+  async updateClientUser(id: string, updateClientUser: Partial<InsertClientUser>): Promise<ClientUser> {
+    const [clientUser] = await this.db
+      .update(clientUsers)
+      .set({ ...updateClientUser, updatedAt: Date.now() })
+      .where(eq(clientUsers.id, id))
+      .returning();
+    return clientUser;
+  }
+
+  async deleteClientUser(id: string): Promise<void> {
+    await this.db.delete(clientUsers).where(eq(clientUsers.id, id));
+  }
+
+  async validateClientPassword(password: string, hash: string): Promise<boolean> {
+    return bcrypt.compare(password, hash);
+  }
+
+  // Analytics - Time Entries
+  async getTimeEntry(id: string): Promise<TimeEntry | undefined> {
+    const timeEntry = await this.db.query.timeEntries.findFirst({
+      where: eq(timeEntries.id, id),
+    });
+    return timeEntry || undefined;
+  }
+
+  async getTimeEntriesByProject(projectId: string): Promise<TimeEntry[]> {
+    const entries = await this.db.query.timeEntries.findMany({
+      where: eq(timeEntries.projectId, projectId),
+      orderBy: [desc(timeEntries.createdAt)],
+    });
+    return entries || [];
+  }
+
+  async getTimeEntriesByUser(userId: string): Promise<TimeEntry[]> {
+    const entries = await this.db.query.timeEntries.findMany({
+      where: eq(timeEntries.userId, userId),
+      orderBy: [desc(timeEntries.createdAt)],
+    });
+    return entries || [];
+  }
+
+  async createTimeEntry(insertTimeEntry: InsertTimeEntry): Promise<TimeEntry> {
+    const [timeEntry] = await this.db
+      .insert(timeEntries)
+      .values(insertTimeEntry as any)
+      .returning();
+    return timeEntry;
+  }
+
+  async updateTimeEntry(id: string, updateTimeEntry: Partial<InsertTimeEntry>): Promise<TimeEntry> {
+    const [timeEntry] = await this.db
+      .update(timeEntries)
+      .set({ ...updateTimeEntry, updatedAt: Date.now() })
+      .where(eq(timeEntries.id, id))
+      .returning();
+    return timeEntry;
+  }
+
+  async deleteTimeEntry(id: string): Promise<void> {
+    await this.db.delete(timeEntries).where(eq(timeEntries.id, id));
+  }
+
+  // Analytics - OAuth Tokens
+  async getOAuthToken(id: string): Promise<OAuthToken | undefined> {
+    const token = await this.db.query.oauthTokens.findFirst({
+      where: eq(oauthTokens.id, id),
+    });
+    return token || undefined;
+  }
+
+  async getOAuthTokens(agencyId: string, platform: string): Promise<OAuthToken[]> {
+    const tokens = await this.db.query.oauthTokens.findMany({
+      where: and(eq(oauthTokens.agencyId, agencyId), eq(oauthTokens.platform, platform)),
+      orderBy: [desc(oauthTokens.createdAt)],
+    });
+    return tokens || [];
+  }
+
+  async createOAuthToken(insertToken: InsertOAuthToken): Promise<OAuthToken> {
+    const [token] = await this.db
+      .insert(oauthTokens)
+      .values(insertToken as any)
+      .returning();
+    return token;
+  }
+
+  async updateOAuthToken(id: string, updateToken: Partial<InsertOAuthToken>): Promise<OAuthToken> {
+    const [token] = await this.db
+      .update(oauthTokens)
+      .set({ ...updateToken, updatedAt: Date.now() })
+      .where(eq(oauthTokens.id, id))
+      .returning();
+    return token;
+  }
+
+  async deleteOAuthToken(id: string): Promise<void> {
+    await this.db.delete(oauthTokens).where(eq(oauthTokens.id, id));
+  }
+
+  // Analytics - Campaigns
+  async getCampaign(id: string): Promise<Campaign | undefined> {
+    const campaign = await this.db.query.campaigns.findFirst({
+      where: eq(campaigns.id, id),
+    });
+    return campaign || undefined;
+  }
+
+  async getCampaignsByProject(projectId: string): Promise<Campaign[]> {
+    const campaignList = await this.db.query.campaigns.findMany({
+      where: eq(campaigns.projectId, projectId),
+      orderBy: [desc(campaigns.createdAt)],
+    });
+    return campaignList || [];
+  }
+
+  async getCampaignsByAgency(agencyId: string): Promise<Campaign[]> {
+    const campaignList = await this.db.query.campaigns.findMany({
+      where: eq(campaigns.agencyId, agencyId),
+      orderBy: [desc(campaigns.createdAt)],
+    });
+    return campaignList || [];
+  }
+
+  async createCampaign(insertCampaign: InsertCampaign): Promise<Campaign> {
+    const [campaign] = await this.db
+      .insert(campaigns)
+      .values(insertCampaign as any)
+      .returning();
+    return campaign;
+  }
+
+  async updateCampaign(id: string, updateCampaign: Partial<InsertCampaign>): Promise<Campaign> {
+    const [campaign] = await this.db
+      .update(campaigns)
+      .set({ ...updateCampaign, updatedAt: Date.now() })
+      .where(eq(campaigns.id, id))
+      .returning();
+    return campaign;
+  }
+
+  async deleteCampaign(id: string): Promise<void> {
+    await this.db.delete(campaigns).where(eq(campaigns.id, id));
+  }
+
+  // Analytics - Campaign Metrics
+  async getCampaignMetrics(campaignId: string, startDate?: string, endDate?: string): Promise<CampaignMetrics[]> {
+    let whereClause = eq(campaignMetrics.campaignId, campaignId);
+    
+    if (startDate) {
+      whereClause = and(whereClause, gte(campaignMetrics.date, startDate));
+    }
+    if (endDate) {
+      whereClause = and(whereClause, lte(campaignMetrics.date, endDate));
+    }
+
+    const metrics = await this.db.query.campaignMetrics.findMany({
+      where: whereClause,
+      orderBy: [asc(campaignMetrics.date)],
+    });
+    return metrics || [];
+  }
+
+  async createCampaignMetrics(insertMetrics: InsertCampaignMetrics): Promise<CampaignMetrics> {
+    const [metrics] = await this.db
+      .insert(campaignMetrics)
+      .values(insertMetrics as any)
+      .returning();
+    return metrics;
+  }
+
+  async updateCampaignMetrics(id: string, updateMetrics: Partial<InsertCampaignMetrics>): Promise<CampaignMetrics> {
+    const [metrics] = await this.db
+      .update(campaignMetrics)
+      .set({ ...updateMetrics, updatedAt: Date.now() })
+      .where(eq(campaignMetrics.id, id))
+      .returning();
+    return metrics;
+  }
+
+  // Analytics - Project Expenses
+  async getProjectExpense(id: string): Promise<ProjectExpense | undefined> {
+    const expense = await this.db.query.projectExpenses.findFirst({
+      where: eq(projectExpenses.id, id),
+    });
+    return expense || undefined;
+  }
+
+  async getProjectExpenses(projectId: string): Promise<ProjectExpense[]> {
+    const expenses = await this.db.query.projectExpenses.findMany({
+      where: eq(projectExpenses.projectId, projectId),
+      orderBy: [desc(projectExpenses.createdAt)],
+    });
+    return expenses || [];
+  }
+
+  async createProjectExpense(insertExpense: InsertProjectExpense): Promise<ProjectExpense> {
+    const [expense] = await this.db
+      .insert(projectExpenses)
+      .values(insertExpense as any)
+      .returning();
+    return expense;
+  }
+
+  async updateProjectExpense(id: string, updateExpense: Partial<InsertProjectExpense>): Promise<ProjectExpense> {
+    const [expense] = await this.db
+      .update(projectExpenses)
+      .set({ ...updateExpense, updatedAt: Date.now() })
+      .where(eq(projectExpenses.id, id))
+      .returning();
+    return expense;
+  }
+
+  async deleteProjectExpense(id: string): Promise<void> {
+    await this.db.delete(projectExpenses).where(eq(projectExpenses.id, id));
+  }
+
+  // Analytics - Project Revenue
+  async getProjectRevenue(projectId: string): Promise<ProjectRevenue[]> {
+    const revenue = await this.db.query.projectRevenue.findMany({
+      where: eq(projectRevenue.projectId, projectId),
+      orderBy: [desc(projectRevenue.createdAt)],
+    });
+    return revenue || [];
+  }
+
+  async createProjectRevenue(insertRevenue: InsertProjectRevenue): Promise<ProjectRevenue> {
+    const [revenue] = await this.db
+      .insert(projectRevenue)
+      .values(insertRevenue as any)
+      .returning();
+    return revenue;
+  }
+
+  async updateProjectRevenue(id: string, updateRevenue: Partial<InsertProjectRevenue>): Promise<ProjectRevenue> {
+    const [revenue] = await this.db
+      .update(projectRevenue)
+      .set({ ...updateRevenue, updatedAt: Date.now() })
+      .where(eq(projectRevenue.id, id))
+      .returning();
+    return revenue;
+  }
+
+  async deleteProjectRevenue(id: string): Promise<void> {
+    await this.db.delete(projectRevenue).where(eq(projectRevenue.id, id));
+  }
+
+  // Analytics - Lead Gen Campaigns
+  async getLeadGenCampaign(id: string): Promise<LeadGenCampaign | undefined> {
+    const campaign = await this.db.query.leadGenCampaigns.findFirst({
+      where: eq(leadGenCampaigns.id, id),
+    });
+    return campaign || undefined;
+  }
+
+  async getLeadGenCampaignsByProject(projectId: string): Promise<LeadGenCampaign[]> {
+    const campaigns = await this.db.query.leadGenCampaigns.findMany({
+      where: eq(leadGenCampaigns.projectId, projectId),
+      orderBy: [desc(leadGenCampaigns.createdAt)],
+    });
+    return campaigns || [];
+  }
+
+  async createLeadGenCampaign(insertCampaign: InsertLeadGenCampaign): Promise<LeadGenCampaign> {
+    const [campaign] = await this.db
+      .insert(leadGenCampaigns)
+      .values(insertCampaign as any)
+      .returning();
+    return campaign;
+  }
+
+  async updateLeadGenCampaign(id: string, updateCampaign: Partial<InsertLeadGenCampaign>): Promise<LeadGenCampaign> {
+    const [campaign] = await this.db
+      .update(leadGenCampaigns)
+      .set({ ...updateCampaign, updatedAt: Date.now() })
+      .where(eq(leadGenCampaigns.id, id))
+      .returning();
+    return campaign;
+  }
+
+  async deleteLeadGenCampaign(id: string): Promise<void> {
+    await this.db.delete(leadGenCampaigns).where(eq(leadGenCampaigns.id, id));
+  }
+
+  // Activity Log
+
+  async getRecentActivityByAgency(agencyId: string, limit = 20): Promise<any[]> {
+    // Activity log functionality is not implemented yet
+    return [];
   }
 }
 

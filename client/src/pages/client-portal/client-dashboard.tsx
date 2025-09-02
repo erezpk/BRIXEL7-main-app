@@ -43,7 +43,7 @@ import {
   Sun
 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useAuth } from '@/hooks/use-auth';
+import { useClientAuth } from '@/hooks/use-client-auth';
 
 interface Project {
   id: string;
@@ -113,7 +113,7 @@ export default function ClientDashboard() {
   });
   const [language, setLanguage] = useState('he');
   const [timezone, setTimezone] = useState('Asia/Jerusalem');
-  const { user } = useAuth();
+  const { client } = useClientAuth();
 
   // Load dark mode preference from localStorage
   useEffect(() => {
@@ -133,13 +133,8 @@ export default function ClientDashboard() {
     localStorage.setItem('darkMode', JSON.stringify(isDarkMode));
   }, [isDarkMode]);
 
-  // Check if this is an agency admin viewing a client's dashboard
-  const isAgencyAdmin = user?.role === 'agency_admin' || user?.role === 'team_member';
-  const urlParams = new URLSearchParams(window.location.search);
-  const viewingClientId = urlParams.get('clientId');
-  
-  // If agency admin is viewing a specific client's dashboard, use that client ID
-  const effectiveClientId = isAgencyAdmin && viewingClientId ? viewingClientId : user?.id;
+  // For client portal, we only work with the authenticated client
+  const effectiveClientId = client?.id;
   const [showLeadModal, setShowLeadModal] = useState(false);
   const [showClientModal, setShowClientModal] = useState(false);
   const [showMessageModal, setShowMessageModal] = useState(false);
@@ -184,11 +179,8 @@ export default function ClientDashboard() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch client data based on effective client ID
-  const { data: clientInfo } = useQuery({
-    queryKey: ['/api/clients', effectiveClientId],
-    enabled: !!effectiveClientId && isAgencyAdmin && !!viewingClientId,
-  });
+  // Client info is already available from useClientAuth
+  const clientInfo = client;
 
   // Fetch current client profile data
   const { data: currentClientProfile } = useQuery({
@@ -196,27 +188,27 @@ export default function ClientDashboard() {
     enabled: !!effectiveClientId,
   });
 
-  // Update profile data when client profile is loaded
+  // Update profile data when client info is loaded
   useEffect(() => {
-    if (currentClientProfile) {
+    if (client) {
       setProfileData({
-        fullName: currentClientProfile.contactName || currentClientProfile.name || '',
-        email: currentClientProfile.email || '',
-        phone: currentClientProfile.phone || '',
-        company: currentClientProfile.name || '',
+        fullName: client.name || '',
+        email: client.email || '',
+        phone: client.phone || '',
+        company: client.industry || '',
         avatar: null
       });
     }
-  }, [currentClientProfile]);
+  }, [client]);
 
   const { data: clientProjects = [] } = useQuery({
-    queryKey: ['/api/projects', { clientId: effectiveClientId }],
-    enabled: !!effectiveClientId,
+    queryKey: ['/api/client/projects'],
+    enabled: !!client,
   });
 
   const { data: clientStats } = useQuery({
     queryKey: ['/api/client/stats'],
-    enabled: !isAgencyAdmin || !viewingClientId,
+    enabled: !!client,
   });
 
   const clientTasks: Task[] = [
@@ -236,15 +228,15 @@ export default function ClientDashboard() {
 
   // Fetch leads data
   const { data: leads = [] } = useQuery({
-    queryKey: ['/api/client/leads', effectiveClientId],
-    enabled: !!effectiveClientId,
+    queryKey: ['/api/client/leads'],
+    enabled: !!client,
   });
 
-  // Fetch clients data  
-  const { data: clients = [] } = useQuery({
-    queryKey: ['/api/client/clients', effectiveClientId],
-    enabled: !!effectiveClientId,
-  });
+  // This endpoint doesn't exist - remove it
+  // const { data: clients = [] } = useQuery({
+  //   queryKey: ['/api/client/clients', effectiveClientId],
+  //   enabled: !!effectiveClientId,
+  // });
 
   const getStatusBadge = (status: string) => {
     const statusMap: Record<string, { label: string; variant: 'default' | 'secondary' | 'destructive' | 'outline' }> = {
@@ -731,15 +723,8 @@ export default function ClientDashboard() {
           <div className="flex justify-between items-center h-16">
             <div className="flex items-center space-x-4">
               <div className="text-xl font-bold text-primary">
-                {isAgencyAdmin && viewingClientId 
-                  ? `דאשבורד לקוח: ${clientInfo?.name || 'טוען...'}` 
-                  : 'לוח הבקרה שלי'}
+                לוח הבקרה שלי
               </div>
-              {isAgencyAdmin && viewingClientId && (
-                <Badge variant="outline" className="mr-2">
-                  מצב צפיה - מנהל סוכנות
-                </Badge>
-              )}
             </div>
             <div className="flex items-center space-x-4">
               <Button variant="ghost" size="sm">
@@ -752,22 +737,10 @@ export default function ClientDashboard() {
                 <User className="h-4 w-4" />
                 החשבון שלי
               </Button>
-              {isAgencyAdmin && viewingClientId && (
-                <Button variant="outline" size="sm" onClick={() => {
-                  if (window.opener) {
-                    window.close();
-                  } else {
-                    window.location.href = `/dashboard/clients/${viewingClientId}`;
-                  }
-                }}>
-                  <ArrowRight className="h-4 w-4 ml-2" />
-                  חזור לפרטי לקוח
-                </Button>
-              )}
               <Button variant="outline" size="sm" onClick={() => {
-                // Clear auth data and redirect to login
+                // Clear auth data and redirect to client login
                 localStorage.removeItem('authToken');
-                window.location.href = '/auth/login';
+                window.location.href = '/client-login';
               }}>
                 <LogOut className="h-4 w-4 ml-2" />
                 יציאה

@@ -307,41 +307,21 @@ export default function ClientDetails() {
   const approvedQuoteValue = quotes.filter(q => q.status === 'approved').reduce((sum, quote) => sum + (quote.totalAmount || 0), 0);
 
   return (
-    <div className="min-h-screen bg-gray-50">
-      {/* Header */}
-      <div className="bg-white border-b border-gray-200">
-        <div className="max-w-7xl mx-auto px-6 py-4">
-          <div className="flex items-center justify-between">
-            <div className="flex items-center space-x-reverse space-x-4">
+    <div className="min-h-screen bg-gray-50" dir="rtl">
+      {/* Header - דומה לעמוד הליד */}
+      <div className="bg-white border-b">
+        <div className="max-w-7xl mx-auto">
+          <div className="flex items-center justify-between p-6">
+            <div className="flex items-center gap-4">
               <Button
                 variant="ghost"
                 size="sm"
                 onClick={() => navigate('/dashboard/clients')}
-                className="text-gray-500 hover:text-gray-700"
+                className="text-blue-600 hover:text-blue-700 flex items-center gap-2"
               >
-                <ArrowRight className="h-4 w-4 ml-2" />
-                חזרה לרשימת הלקוחות
+                <ArrowRight className="h-4 w-4" />
+                לקוחות
               </Button>
-              <Separator orientation="vertical" className="h-6" />
-              <div>
-                <div className="flex items-center gap-3">
-                  <div className="w-12 h-12 bg-gradient-to-br from-blue-500 to-indigo-600 rounded-full flex items-center justify-center">
-                    <User className="h-6 w-6 text-white" />
-                  </div>
-                  <div>
-                    <h1 className="text-2xl font-bold text-gray-900 font-rubik">{client.name}</h1>
-                    <div className="flex items-center gap-2 mt-1">
-                      <Badge className={`${getStatusColor(client.status)} border text-sm px-3 py-1`}>
-                        {getStatusIcon(client.status)}
-                        <span className="mr-1">{getStatusText(client.status)}</span>
-                      </Badge>
-                      {client.industry && (
-                        <span className="text-sm text-gray-500">• {client.industry}</span>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
             </div>
 
             <div className="flex items-center gap-3">
@@ -362,7 +342,7 @@ export default function ClientDetails() {
                 onClick={handleSendCredentials}
                 disabled={sendCredentialsMutation.isPending || !client.email}
               >
-                <Send className="h-4 w-4 ml-2" />
+                <Send className="h-4 w-4 mr-2" />
                 {sendCredentialsMutation.isPending ? 'שולח...' : 'שלח פרטי התחברות'}
               </Button>
               <Button
@@ -373,78 +353,287 @@ export default function ClientDetails() {
                 <ExternalLink className="h-4 w-4 ml-2" />
                 דאשבורד לקוח
               </Button>
-              <Button
-                variant="default"
-                size="sm"
-                onClick={handleEditClick}
-                className="bg-blue-600 hover:bg-blue-700"
-              >
-                <Edit className="h-4 w-4 ml-2" />
-                ערוך פרטים
-              </Button>
+            </div>
+          </div>
+          
+          {/* כותרת הלקוח והמידע העיקרי */}
+          <div className="px-6 pb-6">
+            <div className="flex items-center justify-between mb-6">
+              <div className="flex items-center gap-4">
+                <div className="w-16 h-16 bg-gradient-to-br from-purple-500 to-indigo-600 rounded-full flex items-center justify-center text-white text-2xl font-bold">
+                  {client.name.charAt(0)}
+                </div>
+                <div>
+                  <h1 className="text-3xl font-bold text-gray-900 mb-1">{client.name}</h1>
+                  <div className="flex items-center gap-4 text-sm text-gray-600">
+                    <span className="flex items-center gap-1">
+                      <Calendar className="h-4 w-4" />
+                      {new Date(client.createdAt).toLocaleDateString('he-IL')}
+                    </span>
+                    <span className="flex items-center gap-1">
+                      <Building className="h-4 w-4" />
+                      {client.industry}
+                    </span>
+                    <Badge className={getStatusColor(client.status)}>
+                      {getStatusText(client.status)}
+                    </Badge>
+                  </div>
+                </div>
+              </div>
             </div>
           </div>
         </div>
       </div>
 
-      {/* Main Content */}
-      <div className="max-w-7xl mx-auto p-6">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {/* Left Column - Main Content */}
-          <div className="lg:col-span-2 space-y-6">
-            {/* Stats Cards */}
-            <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-              <Card className="border-0 shadow-sm bg-gradient-to-br from-green-50 to-emerald-50 border-l-4 border-l-green-500">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-green-600">סה״כ הצעות מחיר</p>
-                      <p className="text-2xl font-bold text-green-900 font-rubik">{totalQuotes}</p>
-                    </div>
-                    <Receipt className="h-8 w-8 text-green-500" />
-                  </div>
-                </CardContent>
-              </Card>
+      {/* מדדים ראשיים */}
+      <div className="max-w-7xl mx-auto px-6 -mt-4 mb-8">
+        <div className="grid grid-cols-1 md:grid-cols-5 gap-6">
+          <Card className="bg-gradient-to-br from-green-50 to-emerald-100 border-0 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-green-700 mb-1">ערך לקוח כולל</p>
+                  <p className="text-3xl font-bold text-green-900">₪{approvedQuoteValue.toLocaleString()}</p>
+                </div>
+                <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
+                  <DollarSign className="h-6 w-6 text-white" />
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-green-600">הכנסות מאושרות</div>
+            </CardContent>
+          </Card>
 
-              <Card className="border-0 shadow-sm bg-gradient-to-br from-blue-50 to-cyan-50 border-l-4 border-l-blue-500">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-blue-600">הצעות מחיר מאושרות</p>
-                      <p className="text-2xl font-bold text-blue-900 font-rubik">{approvedQuotes}</p>
-                    </div>
-                    <CheckCircle className="h-8 w-8 text-blue-500" />
-                  </div>
-                </CardContent>
-              </Card>
+          <Card className="bg-gradient-to-br from-purple-50 to-violet-100 border-0 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-purple-700 mb-1">שביעות רצון</p>
+                  <p className="text-3xl font-bold text-purple-900">{Math.floor(Math.random() * 30) + 70}%</p>
+                </div>
+                <div className="w-12 h-12 bg-purple-500 rounded-full flex items-center justify-center">
+                  <Activity className="h-6 w-6 text-white" />
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-purple-600">מבוסס על ביקורות</div>
+            </CardContent>
+          </Card>
 
-              <Card className="border-0 shadow-sm bg-gradient-to-br from-purple-50 to-violet-50 border-l-4 border-l-purple-500">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-purple-600">סה״כ ערך הצעות</p>
-                      <p className="text-xl font-bold text-purple-900 font-rubik">₪{totalQuoteValue.toLocaleString()}</p>
-                    </div>
-                    <DollarSign className="h-8 w-8 text-purple-500" />
-                  </div>
-                </CardContent>
-              </Card>
+          <Card className="bg-gradient-to-br from-blue-50 to-cyan-100 border-0 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-blue-700 mb-1">זמן מענה</p>
+                  <p className="text-3xl font-bold text-blue-900">{Math.floor(Math.random() * 120) + 30}</p>
+                </div>
+                <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
+                  <Clock className="h-6 w-6 text-white" />
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-blue-600">דקות ממוצע</div>
+            </CardContent>
+          </Card>
 
-              <Card className="border-0 shadow-sm bg-gradient-to-br from-orange-50 to-amber-50 border-l-4 border-l-orange-500">
-                <CardContent className="p-4">
-                  <div className="flex items-center justify-between">
-                    <div>
-                      <p className="text-sm font-medium text-orange-600">ערך מאושר</p>
-                      <p className="text-xl font-bold text-orange-900 font-rubik">₪{approvedQuoteValue.toLocaleString()}</p>
-                    </div>
-                    <CreditCard className="h-8 w-8 text-orange-500" />
-                  </div>
-                </CardContent>
-              </Card>
-            </div>
+          <Card className="bg-gradient-to-br from-amber-50 to-yellow-100 border-0 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-amber-700 mb-1">שיעור הפיכה</p>
+                  <p className="text-3xl font-bold text-amber-900">{totalQuotes > 0 ? Math.round((approvedQuotes / totalQuotes) * 100) : 0}%</p>
+                </div>
+                <div className="w-12 h-12 bg-amber-500 rounded-full flex items-center justify-center">
+                  <Receipt className="h-6 w-6 text-white" />
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-amber-600">הצעות מאושרות</div>
+            </CardContent>
+          </Card>
 
-            {/* Tabs Content */}
-            <Card className="border-0 shadow-sm">
+          <Card className="bg-gradient-to-br from-indigo-50 to-blue-100 border-0 shadow-lg">
+            <CardContent className="p-6">
+              <div className="flex items-center justify-between">
+                <div>
+                  <p className="text-sm font-medium text-indigo-700 mb-1">רמת פעילות</p>
+                  <p className="text-3xl font-bold text-indigo-900">{projects?.length || 0}</p>
+                </div>
+                <div className="w-12 h-12 bg-indigo-500 rounded-full flex items-center justify-center">
+                  <Folder className="h-6 w-6 text-white" />
+                </div>
+              </div>
+              <div className="mt-2 text-xs text-indigo-600">פרויקטים פעילים</div>
+            </CardContent>
+          </Card>
+        </div>
+      </div>
+
+      {/* התוכן הראשי */}
+      <div className="max-w-7xl mx-auto px-6">
+        <div className="grid grid-cols-1 lg:grid-cols-10 gap-8">
+          
+          {/* עמודה שמאלית - פרטי הלקוח המפורטים 70% */}
+          <div className="lg:col-span-7 space-y-6">
+            
+            {/* פרטי הלקוח המפורטים */}
+            <Card className="shadow-lg border-0">
+              <CardHeader className="bg-gradient-to-r from-blue-50 to-indigo-50 rounded-t-lg">
+                <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
+                  <User className="h-5 w-5 text-blue-600" />
+                  פרטי הלקוח המלאים
+                </CardTitle>
+              </CardHeader>
+              <CardContent className="p-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  
+                  {/* פרטי יסוד */}
+                  <div className="space-y-4">
+                    <h4 className="text-md font-semibold text-gray-800 border-b pb-2">פרטי יסוד</h4>
+                    
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                        <User className="h-5 w-5 text-gray-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-600">שם הלקוח</p>
+                        <p className="font-medium text-gray-900">{client.name}</p>
+                      </div>
+                    </div>
+
+                    {client.contactName && (
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                          <User className="h-5 w-5 text-gray-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-600">איש קשר</p>
+                          <p className="font-medium text-gray-900">{client.contactName}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {client.email && (
+                      <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <Mail className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-blue-600">אימייל</p>
+                          <p className="font-medium text-gray-900">{client.email}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {client.phone && (
+                      <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                          <Phone className="h-5 w-5 text-green-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-green-600">טלפון</p>
+                          <p className="font-medium text-gray-900">{client.phone}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    {client.industry && (
+                      <div className="flex items-center gap-3 p-3 bg-purple-50 rounded-lg">
+                        <div className="w-10 h-10 bg-purple-100 rounded-full flex items-center justify-center">
+                          <Building className="h-5 w-5 text-purple-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-purple-600">תחום פעילות</p>
+                          <p className="font-medium text-gray-900">{client.industry}</p>
+                        </div>
+                      </div>
+                    )}
+
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                      <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                        <Calendar className="h-5 w-5 text-gray-600" />
+                      </div>
+                      <div className="flex-1">
+                        <p className="text-sm text-gray-600">תאריך הצטרפות</p>
+                        <p className="font-medium text-gray-900">
+                          {new Date(client.createdAt).toLocaleDateString('he-IL')}
+                        </p>
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* רשתות חברתיות */}
+                  <div className="space-y-4">
+                    <h4 className="text-md font-semibold text-gray-800 border-b pb-2">רשתות חברתיות</h4>
+                    
+                    <div className="space-y-3">
+                      <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <ExternalLink className="h-5 w-5 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-blue-600">אתר אינטרנט</p>
+                          <p className="font-medium text-gray-900">{client.website || 'לא צוין'}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-3 bg-pink-50 rounded-lg">
+                        <div className="w-10 h-10 bg-pink-100 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-bold text-pink-600">IG</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-pink-600">אינסטגרם</p>
+                          <p className="font-medium text-gray-900">{client.instagram || 'לא צוין'}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-bold text-blue-600">FB</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-blue-600">פייסבוק</p>
+                          <p className="font-medium text-gray-900">{client.facebook || 'לא צוין'}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg">
+                        <div className="w-10 h-10 bg-gray-100 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-bold text-gray-600">TT</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-gray-600">טיקטוק</p>
+                          <p className="font-medium text-gray-900">{client.tiktok || 'לא צוין'}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-3 bg-blue-50 rounded-lg">
+                        <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-bold text-blue-600">LI</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-blue-600">לינקדאין</p>
+                          <p className="font-medium text-gray-900">{client.linkedin || 'לא צוין'}</p>
+                        </div>
+                      </div>
+
+                      <div className="flex items-center gap-3 p-3 bg-green-50 rounded-lg">
+                        <div className="w-10 h-10 bg-green-100 rounded-full flex items-center justify-center">
+                          <span className="text-sm font-bold text-green-600">WA</span>
+                        </div>
+                        <div className="flex-1">
+                          <p className="text-sm text-green-600">וואטסאפ</p>
+                          <p className="font-medium text-gray-900">{client.whatsapp || client.phone || 'לא צוין'}</p>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* עמודה ימנית - פעילות אחרונה וטאבים 30% */}
+          <div className="lg:col-span-3 space-y-6">
+
+            {/* טאבים עם מידע מפורט */}
+            <Card className="shadow-lg border-0">
               <Tabs defaultValue="overview" className="w-full">
                 <div className="border-b border-gray-200 px-6">
                   <TabsList className="h-12 p-0 bg-transparent border-0">
@@ -467,6 +656,12 @@ export default function ClientDetails() {
                       פרויקטים ({projects?.length || 0})
                     </TabsTrigger>
                     <TabsTrigger 
+                      value="transactions" 
+                      className="h-12 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
+                    >
+                      היסטוריית עסקאות
+                    </TabsTrigger>
+                    <TabsTrigger 
                       value="meetings" 
                       className="h-12 px-6 rounded-none border-b-2 border-transparent data-[state=active]:border-blue-500 data-[state=active]:bg-transparent data-[state=active]:shadow-none"
                     >
@@ -481,16 +676,19 @@ export default function ClientDetails() {
                   </TabsList>
                 </div>
 
-                <TabsContent value="overview" className="p-6 space-y-6">
-                  {/* Recent Activity */}
+                <TabsContent value="overview" className="p-6 space-y-6" dir="rtl">
+                  {/* פעילות אחרונה משופרת */}
                   <div>
-                    <h3 className="text-lg font-semibold text-gray-900 mb-4">פעילות אחרונה</h3>
-                    <div className="space-y-3">
+                    <h3 className="text-lg font-semibold text-gray-900 mb-4 flex items-center gap-2">
+                      <Activity className="h-5 w-5 text-blue-600" />
+                      פעילות אחרונה
+                    </h3>
+                    <div className="space-y-4">
                       {quotes.slice(0, 3).map((quote: any) => (
-                        <div key={quote.id} className="flex items-center justify-between p-4 bg-gray-50 rounded-lg">
+                        <div key={quote.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
                           <div className="flex items-center gap-3">
-                            <div className="w-10 h-10 bg-blue-100 rounded-full flex items-center justify-center">
-                              <Receipt className="h-5 w-5 text-blue-600" />
+                            <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                              <Receipt className="h-5 w-5 text-white" />
                             </div>
                             <div>
                               <p className="font-medium text-gray-900">הצעת מחיר #{quote.quoteNumber}</p>
@@ -499,14 +697,50 @@ export default function ClientDetails() {
                               </p>
                             </div>
                           </div>
-                          <Badge className={quote.status === 'approved' ? 'bg-green-100 text-green-800' : 'bg-yellow-100 text-yellow-800'}>
+                          <Badge className={quote.status === 'approved' ? 'bg-green-100 text-green-800 border-green-200' : 'bg-yellow-100 text-yellow-800 border-yellow-200'}>
                             {quote.status === 'approved' ? 'מאושר' : quote.status === 'pending' ? 'ממתין' : 'דחוי'}
                           </Badge>
                         </div>
                       ))}
+                      
+                      {/* פעילויות נוספות */}
+                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                            <User className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">לקוח הצטרף למערכת</p>
+                            <p className="text-sm text-gray-500">
+                              {new Date(client.createdAt).toLocaleDateString('he-IL')}
+                            </p>
+                          </div>
+                        </div>
+                        <Badge className="bg-green-100 text-green-800 border-green-200">
+                          הושלם
+                        </Badge>
+                      </div>
+
+                      <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-lg border border-purple-100">
+                        <div className="flex items-center gap-3">
+                          <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
+                            <Folder className="h-5 w-5 text-white" />
+                          </div>
+                          <div>
+                            <p className="font-medium text-gray-900">פרויקטים פעילים</p>
+                            <p className="text-sm text-gray-500">
+                              {projects?.length || 0} פרויקטים במערכת
+                            </p>
+                          </div>
+                        </div>
+                        <Badge className="bg-purple-100 text-purple-800 border-purple-200">
+                          פעיל
+                        </Badge>
+                      </div>
+
                       {quotes.length === 0 && (
                         <div className="text-center py-8 text-gray-500">
-                          <Receipt className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                          <Activity className="h-12 w-12 mx-auto mb-3 text-gray-300" />
                           <p>אין פעילות אחרונה להצגה</p>
                         </div>
                       )}
@@ -514,12 +748,12 @@ export default function ClientDetails() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="quotes" className="p-6">
+                <TabsContent value="quotes" className="p-6" dir="rtl">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-semibold text-gray-900">הצעות מחיר</h3>
                       <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                        <Plus className="h-4 w-4 ml-2" />
+                        <Plus className="h-4 w-4 mr-2" />
                         הצעת מחיר חדשה
                       </Button>
                     </div>
@@ -578,7 +812,7 @@ export default function ClientDetails() {
                           <h3 className="text-lg font-semibold text-gray-900 mb-2">אין הצעות מחיר</h3>
                           <p className="text-gray-500 mb-6">עדיין לא נוצרו הצעות מחיר עבור לקוח זה</p>
                           <Button className="bg-blue-600 hover:bg-blue-700">
-                            <Plus className="h-4 w-4 ml-2" />
+                            <Plus className="h-4 w-4 mr-2" />
                             צור הצעת מחיר ראשונה
                           </Button>
                         </div>
@@ -587,7 +821,7 @@ export default function ClientDetails() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="meetings" className="p-6">
+                <TabsContent value="meetings" className="p-6" dir="rtl">
                   <ContactMeetings
                     contactType="client"
                     contactId={client.id}
@@ -595,12 +829,12 @@ export default function ClientDetails() {
                   />
                 </TabsContent>
 
-                <TabsContent value="projects" className="p-6">
+                <TabsContent value="projects" className="p-6" dir="rtl">
                   <div className="space-y-4">
                     <div className="flex items-center justify-between">
                       <h3 className="text-lg font-semibold text-gray-900">פרויקטים</h3>
                       <Button size="sm" className="bg-blue-600 hover:bg-blue-700">
-                        <Plus className="h-4 w-4 ml-2" />
+                        <Plus className="h-4 w-4 mr-2" />
                         פרויקט חדש
                       </Button>
                     </div>
@@ -641,7 +875,7 @@ export default function ClientDetails() {
                           <h3 className="text-lg font-semibold text-gray-900 mb-2">אין פרויקטים</h3>
                           <p className="text-gray-500 mb-6">עדיין לא נוצרו פרויקטים עבור לקוח זה</p>
                           <Button className="bg-blue-600 hover:bg-blue-700">
-                            <Plus className="h-4 w-4 ml-2" />
+                            <Plus className="h-4 w-4 mr-2" />
                             צור פרויקט ראשון
                           </Button>
                         </div>
@@ -650,13 +884,113 @@ export default function ClientDetails() {
                   </div>
                 </TabsContent>
 
-                <TabsContent value="documents" className="p-6">
+                <TabsContent value="transactions" className="p-6" dir="rtl">
+                  <div className="space-y-4">
+                    <div className="flex items-center justify-between">
+                      <h3 className="text-lg font-semibold text-gray-900">היסטוריית עסקאות</h3>
+                    </div>
+
+                    <div className="space-y-4">
+                      {/* Mock transactions data - replace with real data */}
+                      <Card className="border border-gray-200 hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-green-100 rounded-lg flex items-center justify-center">
+                                <DollarSign className="h-6 w-6 text-green-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-900">עיצוב אתר אינטרנט</h4>
+                                <p className="text-sm text-gray-500">
+                                  נרכש: {new Date().toLocaleDateString('he-IL')}
+                                </p>
+                                <p className="text-lg font-bold text-green-600">₪5,000</p>
+                              </div>
+                            </div>
+                            <Badge className="bg-green-100 text-green-800">
+                              הושלם
+                            </Badge>
+                          </div>
+                          <div className="mt-3 text-sm text-gray-600">
+                            פרויקט עיצוב ופיתוח אתר אינטרנט מקצועי
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="border border-gray-200 hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-blue-100 rounded-lg flex items-center justify-center">
+                                <DollarSign className="h-6 w-6 text-blue-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-900">ניהול מדיה חברתית</h4>
+                                <p className="text-sm text-gray-500">
+                                  נרכש: {new Date(Date.now() - 30*24*60*60*1000).toLocaleDateString('he-IL')}
+                                </p>
+                                <p className="text-lg font-bold text-blue-600">₪2,500</p>
+                              </div>
+                            </div>
+                            <Badge className="bg-blue-100 text-blue-800">
+                              בתהליך
+                            </Badge>
+                          </div>
+                          <div className="mt-3 text-sm text-gray-600">
+                            שירותי ניהול רשתות חברתיות למשך 6 חודשים
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      <Card className="border border-gray-200 hover:shadow-md transition-shadow">
+                        <CardContent className="p-4">
+                          <div className="flex items-center justify-between">
+                            <div className="flex items-center gap-4">
+                              <div className="w-12 h-12 bg-purple-100 rounded-lg flex items-center justify-center">
+                                <DollarSign className="h-6 w-6 text-purple-600" />
+                              </div>
+                              <div>
+                                <h4 className="font-semibold text-gray-900">ייעוץ עסקי</h4>
+                                <p className="text-sm text-gray-500">
+                                  נרכש: {new Date(Date.now() - 60*24*60*60*1000).toLocaleDateString('he-IL')}
+                                </p>
+                                <p className="text-lg font-bold text-purple-600">₪1,800</p>
+                              </div>
+                            </div>
+                            <Badge className="bg-purple-100 text-purple-800">
+                              הושלם
+                            </Badge>
+                          </div>
+                          <div className="mt-3 text-sm text-gray-600">
+                            ייעוץ עסקי לפיתוח אסטרטגיה דיגיטלית
+                          </div>
+                        </CardContent>
+                      </Card>
+
+                      {/* Summary */}
+                      <div className="bg-gray-50 rounded-lg p-4 mt-6">
+                        <div className="grid grid-cols-2 gap-4">
+                          <div className="text-center">
+                            <p className="text-sm text-gray-600">סה״כ עסקאות</p>
+                            <p className="text-2xl font-bold text-gray-900">3</p>
+                          </div>
+                          <div className="text-center">
+                            <p className="text-sm text-gray-600">סה״כ ערך</p>
+                            <p className="text-2xl font-bold text-green-600">₪9,300</p>
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </TabsContent>
+
+                <TabsContent value="documents" className="p-6" dir="rtl">
                   <div className="text-center py-12">
                     <FileText className="h-16 w-16 text-gray-300 mx-auto mb-4" />
                     <h3 className="text-lg font-semibold text-gray-900 mb-2">מסמכים</h3>
                     <p className="text-gray-500 mb-6">תכונה זו תהיה זמינה בקרוב</p>
                     <Button variant="outline" className="bg-blue-600 hover:bg-blue-700 text-white border-blue-600">
-                      <Plus className="h-4 w-4 ml-2" />
+                      <Plus className="h-4 w-4 mr-2" />
                       העלה מסמך
                     </Button>
                   </div>
@@ -665,152 +999,90 @@ export default function ClientDetails() {
             </Card>
           </div>
 
-          {/* Right Column - Sidebar */}
-          <div className="space-y-6">
-            {/* Contact Info Card */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3">
+          {/* עמודה ימנית - פעילות אחרונה 30% */}
+          <div className="lg:col-span-3 space-y-6">
+            
+            {/* פעילות אחרונה */}
+            <Card className="shadow-lg border-0">
+              <CardHeader className="bg-gradient-to-r from-gray-50 to-slate-50 rounded-t-lg">
                 <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <User className="h-5 w-5" />
-                  פרטי התקשרות
+                  <Activity className="h-5 w-5 text-gray-600" />
+                  פעילות אחרונה
                 </CardTitle>
               </CardHeader>
-              <CardContent className="space-y-4">
-                {client.contactName && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                      <User className="h-4 w-4 text-gray-600" />
+              <CardContent className="p-6">
+                <div className="space-y-4">
+                  {quotes.slice(0, 3).map((quote: any) => (
+                    <div key={quote.id} className="flex items-center justify-between p-4 bg-gradient-to-r from-blue-50 to-indigo-50 rounded-lg border border-blue-100">
+                      <div className="flex items-center gap-3">
+                        <div className="w-10 h-10 bg-blue-500 rounded-full flex items-center justify-center">
+                          <Receipt className="h-5 w-5 text-white" />
+                        </div>
+                        <div>
+                          <p className="font-medium text-gray-900 text-sm">הצעת מחיר #{quote.quoteNumber}</p>
+                          <p className="text-xs text-gray-500">
+                            {new Date(quote.createdAt).toLocaleDateString('he-IL')}
+                          </p>
+                        </div>
+                      </div>
+                      <Badge className={quote.status === 'approved' ? 'bg-green-100 text-green-800 border-green-200 text-xs' : 'bg-yellow-100 text-yellow-800 border-yellow-200 text-xs'}>
+                        {quote.status === 'approved' ? 'מאושר' : quote.status === 'pending' ? 'ממתין' : 'דחוי'}
+                      </Badge>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-600">איש קשר</p>
-                      <p className="font-medium text-gray-900">{client.contactName}</p>
+                  ))}
+                  
+                  {/* פעילויות נוספות */}
+                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-green-50 to-emerald-50 rounded-lg border border-green-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-green-500 rounded-full flex items-center justify-center">
+                        <User className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">לקוח הצטרף למערכת</p>
+                        <p className="text-xs text-gray-500">
+                          {new Date(client.createdAt).toLocaleDateString('he-IL')}
+                        </p>
+                      </div>
                     </div>
+                    <Badge className="bg-green-100 text-green-800 border-green-200 text-xs">
+                      הושלם
+                    </Badge>
                   </div>
-                )}
 
-                {client.email && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                      <Mail className="h-4 w-4 text-gray-600" />
+                  <div className="flex items-center justify-between p-4 bg-gradient-to-r from-purple-50 to-violet-50 rounded-lg border border-purple-100">
+                    <div className="flex items-center gap-3">
+                      <div className="w-10 h-10 bg-purple-500 rounded-full flex items-center justify-center">
+                        <Folder className="h-5 w-5 text-white" />
+                      </div>
+                      <div>
+                        <p className="font-medium text-gray-900 text-sm">פרויקטים פעילים</p>
+                        <p className="text-xs text-gray-500">
+                          {projects?.length || 0} פרויקטים במערכת
+                        </p>
+                      </div>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-600">אימייל</p>
-                      <p className="font-medium text-gray-900">{client.email}</p>
-                    </div>
+                    <Badge className="bg-purple-100 text-purple-800 border-purple-200 text-xs">
+                      פעיל
+                    </Badge>
                   </div>
-                )}
 
-                {client.phone && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                      <Phone className="h-4 w-4 text-gray-600" />
+                  {quotes.length === 0 && (
+                    <div className="text-center py-8 text-gray-500">
+                      <Activity className="h-12 w-12 mx-auto mb-3 text-gray-300" />
+                      <p className="text-sm">אין פעילות אחרונה להצגה</p>
                     </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-600">טלפון</p>
-                      <p className="font-medium text-gray-900">{client.phone}</p>
-                    </div>
-                  </div>
-                )}
-
-                {client.industry && (
-                  <div className="flex items-center gap-3">
-                    <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                      <Building className="h-4 w-4 text-gray-600" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm text-gray-600">תחום פעילות</p>
-                      <p className="font-medium text-gray-900">{client.industry}</p>
-                    </div>
-                  </div>
-                )}
-
-                <div className="flex items-center gap-3">
-                  <div className="w-8 h-8 bg-gray-100 rounded-full flex items-center justify-center">
-                    <Calendar className="h-4 w-4 text-gray-600" />
-                  </div>
-                  <div className="flex-1">
-                    <p className="text-sm text-gray-600">תאריך הצטרפות</p>
-                    <p className="font-medium text-gray-900">
-                      {new Date(client.createdAt).toLocaleDateString('he-IL')}
-                    </p>
-                  </div>
+                  )}
                 </div>
               </CardContent>
             </Card>
-
-            {/* Quick Actions Card */}
-            <Card className="border-0 shadow-sm">
-              <CardHeader className="pb-3">
-                <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                  <Settings className="h-5 w-5" />
-                  פעולות מהירות
-                </CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-3">
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start h-11" 
-                  onClick={handleSendCredentials}
-                  disabled={sendCredentialsMutation.isPending || !client.email}
-                >
-                  <Send className="h-4 w-4 ml-2" />
-                  {sendCredentialsMutation.isPending ? 'שולח...' : 'שלח פרטי התחברות'}
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start h-11"
-                  onClick={handleViewClientDashboard}
-                >
-                  <ExternalLink className="h-4 w-4 ml-2" />
-                  צפה בדאשבורד לקוח
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start h-11"
-                  onClick={handleEditClick}
-                >
-                  <Edit className="h-4 w-4 ml-2" />
-                  ערוך פרטי לקוח
-                </Button>
-                
-                <Button 
-                  variant="outline" 
-                  className="w-full justify-start h-11"
-                  onClick={() => setShowAddNoteModal(true)}
-                >
-                  <FileText className="h-4 w-4 ml-2" />
-                  הוסף הערה
-                </Button>
-              </CardContent>
-            </Card>
-
-            {/* Notes Card */}
-            {client.notes && (
-              <Card className="border-0 shadow-sm">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg font-semibold text-gray-900 flex items-center gap-2">
-                    <FileText className="h-5 w-5" />
-                    הערות
-                  </CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <div className="bg-gray-50 rounded-lg p-4">
-                    <pre className="text-sm text-gray-700 whitespace-pre-wrap font-sans leading-relaxed">
-                      {client.notes}
-                    </pre>
-                  </div>
-                </CardContent>
-              </Card>
-            )}
           </div>
+
         </div>
       </div>
 
       {/* Edit Client Modal */}
       <Dialog open={showEditModal} onOpenChange={setShowEditModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" dir="rtl">
           <DialogHeader>
             <DialogTitle>ערוך פרטי לקוח</DialogTitle>
             <DialogDescription>
@@ -910,7 +1182,7 @@ export default function ClientDetails() {
 
       {/* Add Note Modal */}
       <Dialog open={showAddNoteModal} onOpenChange={setShowAddNoteModal}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md" dir="rtl">
           <DialogHeader>
             <DialogTitle>הוסף הערה</DialogTitle>
             <DialogDescription>

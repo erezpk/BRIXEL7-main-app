@@ -190,7 +190,7 @@ export default function Clients() {
   };
 
   return (
-    <div className="space-y-6" data-testid="clients-page">
+    <div className="space-y-6" data-testid="clients-page" dir="rtl">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>

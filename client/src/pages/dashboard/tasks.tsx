@@ -346,7 +346,8 @@ export default function Tasks() {
                     return (
                       <tr 
                         key={task.id} 
-                        className="border-b hover:bg-gray-50 transition-colors"
+                        className="border-b hover:bg-gray-50 transition-colors cursor-pointer"
+                        onClick={() => handleEditTask(task)}
                       >
                         <td className="p-3">
                           <input

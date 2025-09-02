@@ -21,10 +21,13 @@ import Clients from "@/pages/dashboard/clients";
 import ClientDetails from "@/pages/dashboard/client-details";
 import Leads from "@/pages/dashboard/leads";
 import LeadDetails from "@/pages/dashboard/lead-details";
+import Contacts from "@/pages/dashboard/contacts";
 
 import Projects from "@/pages/dashboard/projects"; // index.tsx
 import NewProject from "@/pages/dashboard/projects/NewProject";
 import ProjectDetails from "@/pages/dashboard/ProjectDetails";
+import NewProjectDetails from "@/pages/dashboard/NewProjectDetails";
+import ProjectDetailsNew from "@/pages/dashboard/projects/[id]";
 import Tasks from "@/pages/dashboard/tasks";
 import Team from "@/pages/dashboard/team";
 import Reports from "@/pages/dashboard/reports";
@@ -66,6 +69,9 @@ import { FloatingChatButton } from "@/components/chat/FloatingChatButton";
 import ProductsPageNew from "@/pages/dashboard/products";
 import QuotesPageNew from "@/pages/dashboard/quotes";
 import FinancePage from "@/pages/dashboard/finance";
+import ClientLogin from "@/pages/client-login";
+import AutomationsPage from "@/pages/dashboard/automations";
+import SatisfactionSurveysPage from "@/pages/dashboard/satisfaction-surveys";
 
 function ProtectedRoute({ children }: { children: React.ReactNode }) {
   const { user, isLoading } = useAuth();
@@ -112,6 +118,7 @@ export default function App() {
         <Switch>
           <Route path="/" component={Homepage} />
           <Route path="/login" component={Login} />
+          <Route path="/client-login" component={ClientLogin} />
           <Route path="/signup" component={Signup} />
           <Route path="/setup-agency" component={SetupAgency} />
           <Route path="/forgot-password" component={ForgotPassword} />
@@ -145,6 +152,13 @@ export default function App() {
             <ProtectedRoute>
               <DashboardLayout>
                 <Clients />
+              </DashboardLayout>
+            </ProtectedRoute>
+          </Route>
+          <Route path="/dashboard/contacts">
+            <ProtectedRoute>
+              <DashboardLayout>
+                <Contacts />
               </DashboardLayout>
             </ProtectedRoute>
           </Route>
@@ -186,15 +200,27 @@ export default function App() {
             component={() => (
               <ProtectedRoute>
                 <DashboardLayout>
-                  <ProjectDetails />
+                  <NewProjectDetails />
                 </DashboardLayout>
               </ProtectedRoute>
             )}
           />
 
-          {/* LEGACY PROJECT DETAILS ROUTE */}
+          {/* PROJECT DETAILS ROUTE */}
           <Route
             path="/dashboard/projects/:projectId"
+            component={() => (
+              <ProtectedRoute>
+                <DashboardLayout>
+                  <ProjectDetailsNew />
+                </DashboardLayout>
+              </ProtectedRoute>
+            )}
+          />
+
+          {/* ALTERNATE PROJECT ROUTE */}
+          <Route
+            path="/projects/:projectId"
             component={() => (
               <ProtectedRoute>
                 <DashboardLayout>
@@ -388,6 +414,22 @@ export default function App() {
             </ProtectedRoute>
           </Route>
 
+          <Route path="/dashboard/automations">
+            <ProtectedRoute>
+              <DashboardLayout>
+                <AutomationsPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          </Route>
+
+          <Route path="/dashboard/satisfaction-surveys">
+            <ProtectedRoute>
+              <DashboardLayout>
+                <SatisfactionSurveysPage />
+              </DashboardLayout>
+            </ProtectedRoute>
+          </Route>
+
           <Route path="/dashboard/items-management">
             <ProtectedRoute>
               <DashboardLayout>
@@ -414,16 +456,7 @@ export default function App() {
           </Route>
 
           {/* CLIENT PORTAL - Standalone authentication */}
-          <Route path="/client-portal" component={() => {
-          const urlParams = new URLSearchParams(window.location.search);
-          const clientId = urlParams.get('clientId');
-
-          if (clientId) {
-            return <ClientDashboard />;
-          } else {
-            return <ClientDashboard />;
-          }
-        }} />
+          <Route path="/client-portal" component={ClientDashboard} />
           {/* SETTINGS SUB-ROUTES */}
           <Route path="/dashboard/settings/email">
             <ProtectedRoute>

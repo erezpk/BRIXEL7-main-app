@@ -179,41 +179,44 @@ export function MeetingScheduler({ contactType, contactId, contactName, trigger 
           </Button>
         )}
       </DialogTrigger>
-      <DialogContent className="max-w-lg max-h-[75vh] overflow-y-auto" aria-describedby="meeting-dialog-description">
-        <DialogHeader>
-          <DialogTitle className="text-right">קבע פגישה עם {contactName}</DialogTitle>
+      <DialogContent className="max-w-lg max-h-[75vh] overflow-y-auto" aria-describedby="meeting-dialog-description" dir="rtl">
+        <DialogHeader className="border-b pb-4">
+          <DialogTitle className="text-right text-xl font-bold text-gray-900 flex items-center gap-2">
+            <CalendarIcon className="h-5 w-5 text-blue-600" />
+            קבע פגישה עם {contactName}
+          </DialogTitle>
         </DialogHeader>
         <div id="meeting-dialog-description" className="sr-only">טופס לקביעת פגישה חדשה עם הליד או הלקוח</div>
         
-        <div className="space-y-4">
+        <div className="space-y-5 pt-2">
           {/* Title */}
-          <div>
-            <Label htmlFor="title">כותרת הפגישה *</Label>
+          <div className="space-y-2">
+            <Label htmlFor="title" className="text-sm font-medium text-gray-700">כותרת הפגישה *</Label>
             <Input
               id="title"
               value={title}
               onChange={(e) => setTitle(e.target.value)}
-              placeholder="נושא הפגישה"
-              className="text-right"
+              placeholder="נושא הפגישה..."
+              className="text-right border-gray-300 focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
 
           {/* Date */}
-          <div>
-            <Label>תאריך *</Label>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">תאריך *</Label>
             <Popover>
               <PopoverTrigger asChild>
                 <div
-                  className="flex h-10 w-full cursor-pointer items-center justify-start rounded-md border border-input bg-background px-3 py-2 text-sm text-right font-normal ring-offset-background placeholder:text-muted-foreground focus:outline-none focus:ring-2 focus:ring-ring focus:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
+                  className="flex h-10 w-full cursor-pointer items-center justify-between rounded-md border border-gray-300 bg-white px-3 py-2 text-sm text-right font-normal hover:border-blue-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
                   tabIndex={0}
                   role="button"
                   aria-label="בחר תאריך"
                 >
-                  <CalendarIcon className="mr-2 h-4 w-4" />
-                  {date ? format(date, "PPP", { locale: he }) : "בחר תאריך"}
+                  <CalendarIcon className="ml-2 h-4 w-4 text-gray-500" />
+                  {date ? format(date, "PPP", { locale: he }) : <span className="text-gray-400">בחר תאריך...</span>}
                 </div>
               </PopoverTrigger>
-              <PopoverContent className="w-auto p-0">
+              <PopoverContent className="w-auto p-0" dir="rtl">
                 <Calendar
                   mode="single"
                   selected={date}
@@ -225,23 +228,27 @@ export function MeetingScheduler({ contactType, contactId, contactName, trigger 
           </div>
 
           {/* Time and Duration */}
-          <div className="grid grid-cols-2 gap-2">
-            <div>
-              <Label htmlFor="time">שעה *</Label>
-              <Input
-                id="time"
-                type="time"
-                value={time}
-                onChange={(e) => setTime(e.target.value)}
-              />
+          <div className="grid grid-cols-2 gap-4">
+            <div className="space-y-2">
+              <Label htmlFor="time" className="text-sm font-medium text-gray-700">שעה *</Label>
+              <div className="relative">
+                <Clock className="absolute right-3 top-2.5 h-4 w-4 text-gray-400" />
+                <Input
+                  id="time"
+                  type="time"
+                  value={time}
+                  onChange={(e) => setTime(e.target.value)}
+                  className="pr-10 text-center border-gray-300 focus:border-blue-500 focus:ring-blue-500"
+                />
+              </div>
             </div>
-            <div>
-              <Label htmlFor="duration">משך (דקות)</Label>
+            <div className="space-y-2">
+              <Label htmlFor="duration" className="text-sm font-medium text-gray-700">משך (דקות)</Label>
               <Select value={duration} onValueChange={setDuration}>
-                <SelectTrigger>
+                <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500">
                   <SelectValue />
                 </SelectTrigger>
-                <SelectContent>
+                <SelectContent dir="rtl">
                   <SelectItem value="30">30 דקות</SelectItem>
                   <SelectItem value="60">60 דקות</SelectItem>
                   <SelectItem value="90">90 דקות</SelectItem>
@@ -252,51 +259,71 @@ export function MeetingScheduler({ contactType, contactId, contactName, trigger 
           </div>
 
           {/* Location */}
-          <div>
-            <Label htmlFor="location">מיקום</Label>
+          <div className="space-y-2">
+            <Label htmlFor="location" className="text-sm font-medium text-gray-700">מיקום</Label>
             <Input
               id="location"
               value={location}
               onChange={(e) => setLocation(e.target.value)}
-              placeholder="כתובת או קישור לפגישה וירטואלית"
-              className="text-right"
+              placeholder="כתובת או קישור לפגישה וירטואלית..."
+              className="text-right border-gray-300 focus:border-blue-500 focus:ring-blue-500"
             />
           </div>
 
           {/* Priority */}
-          <div>
-            <Label>עדיפות</Label>
+          <div className="space-y-2">
+            <Label className="text-sm font-medium text-gray-700">עדיפות</Label>
             <Select value={priority} onValueChange={setPriority}>
-              <SelectTrigger>
+              <SelectTrigger className="border-gray-300 focus:border-blue-500 focus:ring-blue-500 text-right">
                 <SelectValue />
               </SelectTrigger>
-              <SelectContent>
-                <SelectItem value="low">נמוכה</SelectItem>
-                <SelectItem value="medium">בינונית</SelectItem>
-                <SelectItem value="high">גבוהה</SelectItem>
+              <SelectContent dir="rtl">
+                <SelectItem value="low">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-green-500"></div>
+                    <span>עדיפות נמוכה</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="medium">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-yellow-500"></div>
+                    <span>עדיפות בינונית</span>
+                  </div>
+                </SelectItem>
+                <SelectItem value="high">
+                  <div className="flex items-center gap-2">
+                    <div className="w-2 h-2 rounded-full bg-red-500"></div>
+                    <span>עדיפות גבוהה</span>
+                  </div>
+                </SelectItem>
               </SelectContent>
             </Select>
           </div>
 
           {/* Description */}
-          <div>
-            <Label htmlFor="description">הערות</Label>
+          <div className="space-y-2">
+            <Label htmlFor="description" className="text-sm font-medium text-gray-700">הערות</Label>
             <Textarea
               id="description"
               value={description}
               onChange={(e) => setDescription(e.target.value)}
-              placeholder="פרטים נוספים על הפגישה"
-              className="text-right"
+              placeholder="פרטים נוספים על הפגישה..."
+              className="text-right border-gray-300 focus:border-blue-500 focus:ring-blue-500 min-h-[80px]"
               rows={3}
             />
           </div>
 
-          <div className="flex justify-end gap-2 pt-4">
-            <Button variant="outline" onClick={() => setOpen(false)}>
+          <div className="flex justify-between gap-3 pt-6 border-t border-gray-200">
+            <Button 
+              variant="outline" 
+              onClick={() => setOpen(false)}
+              className="flex-1 border-gray-300 text-gray-700 hover:bg-gray-50"
+            >
               ביטול
             </Button>
             <Button 
               onClick={handleScheduleMeeting}
+              className="flex-1 bg-blue-600 hover:bg-blue-700 text-white"
               disabled={createMeetingMutation.isPending}
             >
               <Plus className="h-4 w-4 ml-2" />

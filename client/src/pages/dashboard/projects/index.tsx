@@ -82,7 +82,7 @@ export default function Projects() {
   };
 
   return (
-    <div className="space-y-6" data-testid="projects-page">
+    <div className="space-y-6" data-testid="projects-page" dir="rtl">
       {/* Header */}
       <div className="flex justify-between items-center">
         <div>

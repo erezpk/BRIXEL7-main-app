@@ -1,4 +1,4 @@
-import { useState, useEffect, useRef } from "react";
+import { useState, useEffect, useRef, useMemo } from "react";
 import { useQuery, useMutation, useQueryClient } from "@tanstack/react-query";
 import { useRoute } from "wouter";
 import { Button } from "@/components/ui/button";
@@ -13,20 +13,32 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowRight, Phone, Mail, Calendar, DollarSign, Star, Edit, Save, X, User, Clock, MapPin, 
          MessageSquare, FileText, TrendingUp, Activity, Bell, Settings, Share2, Filter,
          BarChart3, PieChart, Target, Zap, Phone as PhoneCall, Video, Send,
-         History, Tag, Flag, AlertTriangle, CheckCircle, Users, Building, Globe } from "lucide-react";
+         History, Tag, Flag, AlertTriangle, CheckCircle, Users, Building, Globe, UserPlus } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
+import { useAuth } from "@/hooks/use-auth";
 import { ContactMeetings } from "@/components/contact-meetings";
+import NewTaskModal from "@/components/modals/new-task-modal";
 import { notifyLeadUpdated, notifyStatusChanged, notifyMeetingCreated, notifyEmailSent } from "@/lib/notifications";
 
 interface Lead {
   id: string;
   name: string;
+  firstName?: string;
+  lastName?: string;
   email?: string;
   phone?: string;
   source: string;
   status: string;
   priority: string;
   value?: number;
+  budget?: number;
+  industry?: string;
+  company?: string;
+  businessName?: string;
+  businessField?: string;
+  businessNumber?: string;
+  address?: string;
+  city?: string;
   notes?: string;
   assignedTo?: string;
   createdAt: string;
@@ -66,6 +78,7 @@ export default function LeadDetails() {
   const [showEmailModal, setShowEmailModal] = useState(false);
   const [emailForm, setEmailForm] = useState({ subject: "", body: "" });
   const [showMeetingModal, setShowMeetingModal] = useState(false);
+  const [showTaskModal, setShowTaskModal] = useState(false);
   const [meetingForm, setMeetingForm] = useState({
     title: "",
     date: "",
@@ -76,6 +89,7 @@ export default function LeadDetails() {
   });
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { user: currentUser } = useAuth();
   const actionMenuRef = useRef<HTMLDivElement>(null);
 
   const { data: lead, isLoading, error } = useQuery<Lead>({
@@ -91,12 +105,22 @@ export default function LeadDetails() {
 
   const [leadForm, setLeadForm] = useState({
     name: "",
+    firstName: "",
+    lastName: "",
     email: "",
     phone: "",
     source: "website",
     status: "new",
     priority: "medium",
     value: 0,
+    budget: 0,
+    industry: "",
+    company: "",
+    businessName: "",
+    businessField: "",
+    businessNumber: "",
+    address: "",
+    city: "",
     notes: "",
     assignedTo: "unassigned",
   });
@@ -106,12 +130,22 @@ export default function LeadDetails() {
     if (lead) {
       setLeadForm({
         name: lead.name,
+        firstName: lead.firstName || "",
+        lastName: lead.lastName || "",
         email: lead.email || "",
         phone: lead.phone || "",
         source: lead.source,
         status: lead.status,
         priority: lead.priority,
         value: lead.value || 0,
+        budget: lead.budget || 0,
+        industry: lead.industry || "",
+        company: lead.company || "",
+        businessName: lead.businessName || "",
+        businessField: lead.businessField || "",
+        businessNumber: lead.businessNumber || "",
+        address: lead.address || "",
+        city: lead.city || "",
         notes: lead.notes || "",
         assignedTo: lead.assignedTo || "unassigned",
       });
@@ -216,9 +250,15 @@ export default function LeadDetails() {
     mutationFn: async (note: string) => {
       const currentNotes = lead?.notes || '';
       const timestamp = new Date().toLocaleString('he-IL');
+      const authorName = currentUser ? 
+        (currentUser.firstName && currentUser.lastName ? 
+          `${currentUser.firstName} ${currentUser.lastName}` : 
+          currentUser.email) : 
+        'משתמש לא ידוע';
+      
       const newNotesContent = currentNotes 
-        ? `${currentNotes}\n\n[${timestamp}]\n${note}`
-        : `[${timestamp}]\n${note}`;
+        ? `${currentNotes}\n\n[${timestamp}] ${authorName}:\n${note}`
+        : `[${timestamp}] ${authorName}:\n${note}`;
 
       const response = await fetch(`/api/leads/${leadId}`, {
         method: 'PUT',
@@ -284,6 +324,85 @@ export default function LeadDetails() {
       });
     }
     return meetings;
+  };
+
+  // Parse structured notes to show author and timestamp
+  const parseStructuredNotes = (notesText: string) => {
+    if (!notesText) return [];
+    
+    const notes = [];
+    const lines = notesText.split('\n');
+    let currentNote = null;
+    
+    for (let i = 0; i < lines.length; i++) {
+      const line = lines[i].trim();
+      
+      // Check for note header pattern: [timestamp] Author: or [timestamp] without author
+      const headerWithAuthor = line.match(/^\[([^\]]+)\]\s*([^:]+):\s*(.*)/);
+      const headerWithoutAuthor = line.match(/^\[([^\]]+)\]\s*(.*)/);
+      
+      if (headerWithAuthor) {
+        // Save previous note if exists
+        if (currentNote) {
+          notes.push(currentNote);
+        }
+        
+        // Start new note with author
+        currentNote = {
+          id: notes.length + 1,
+          timestamp: headerWithAuthor[1],
+          author: headerWithAuthor[2].trim(),
+          content: headerWithAuthor[3] || '',
+          fullContent: ''
+        };
+      } else if (headerWithoutAuthor && !currentNote) {
+        // Old format without author - assign current user
+        const authorName = currentUser ? 
+          (currentUser.firstName && currentUser.lastName ? 
+            `${currentUser.firstName} ${currentUser.lastName}` : 
+            currentUser.email) : 
+          'משתמש לא ידוע';
+            
+        currentNote = {
+          id: notes.length + 1,
+          timestamp: headerWithoutAuthor[1],
+          author: authorName,
+          content: headerWithoutAuthor[2] || '',
+          fullContent: ''
+        };
+      } else if (currentNote && line) {
+        // Add to current note content
+        currentNote.content += (currentNote.content ? '\n' : '') + line;
+      } else if (!line && currentNote) {
+        // Empty line - could be end of note
+        currentNote.fullContent = currentNote.content;
+      }
+    }
+    
+    // Add the last note
+    if (currentNote) {
+      currentNote.fullContent = currentNote.content;
+      notes.push(currentNote);
+    }
+    
+    // If no structured notes found, create a single note
+    if (notes.length === 0 && notesText.trim()) {
+      const authorName = currentUser ? 
+        (currentUser.firstName && currentUser.lastName ? 
+          `${currentUser.firstName} ${currentUser.lastName}` : 
+          currentUser.email) : 
+        'משתמש לא ידוע';
+      
+      notes.push({
+        id: 1,
+        timestamp: new Date().toLocaleDateString('he-IL'),
+        author: authorName,
+        content: notesText.trim(),
+        fullContent: notesText.trim()
+      });
+    }
+    
+    return notes.reverse(); // Show newest first
   };
 
   // Calculate lead metrics
@@ -463,14 +582,87 @@ export default function LeadDetails() {
   };
 
   const leadMeetings = lead ? getMeetingsFromNotes(lead.notes || '') : [];
-  const leadActivities = lead ? getActivitiesFromNotes(lead.notes || '') : [];
-  const leadMetrics = lead ? calculateLeadMetrics(lead, leadActivities) : { interactions: 0, responseTimeHours: 0, salesScore: 0, salesProbability: 0 };
 
   // Fetch tasks for this lead
   const { data: leadTasks = [] } = useQuery({
     queryKey: ['/api/leads', leadId, 'tasks'],
     enabled: !!leadId,
   });
+
+  // Fetch activities/communications for this lead
+  const { data: leadCommunications = [] } = useQuery({
+    queryKey: ['/api/leads', leadId, 'activities'],
+    enabled: !!leadId,
+  });
+  
+  // Create unified activity feed combining meetings, tasks, and communications
+  const createUnifiedActivityFeed = (lead: Lead, meetings: any[], tasks: any[], communications: any[]) => {
+    const activities = [];
+    
+    // Add meetings as activities
+    meetings.forEach(meeting => {
+      activities.push({
+        id: `meeting-${meeting.id}`,
+        type: 'meeting',
+        title: `פגישה: ${meeting.title}`,
+        description: `פגישה מתוכננת ל-${meeting.dateTime}`,
+        timestamp: new Date(meeting.dateTime).getTime(),
+        icon: Calendar,
+        clickable: true,
+        clickAction: 'meeting-details',
+        data: meeting
+      });
+    });
+    
+    // Add tasks as activities
+    tasks.forEach(task => {
+      activities.push({
+        id: `task-${task.id}`,
+        type: 'task',
+        title: `משימה: ${task.title}`,
+        description: task.description || 'אין תיאור',
+        timestamp: new Date(task.createdAt).getTime(),
+        icon: CheckCircle,
+        clickable: true,
+        clickAction: 'task-details',
+        data: task
+      });
+    });
+    
+    // Add communications as activities  
+    communications.forEach(comm => {
+      activities.push({
+        id: `comm-${comm.id}`,
+        type: comm.type,
+        title: comm.title,
+        description: comm.description,
+        timestamp: comm.timestamp,
+        icon: comm.icon,
+        clickable: false,
+        data: comm
+      });
+    });
+    
+    // Add notes/updates from lead notes
+    const notesActivities = getActivitiesFromNotes(lead.notes || '');
+    notesActivities.forEach(activity => {
+      activities.push({
+        ...activity,
+        clickable: false
+      });
+    });
+    
+    // Sort by timestamp (newest first) and return
+    return activities.sort((a, b) => b.timestamp - a.timestamp);
+  };
+
+  const leadActivities = useMemo(() => {
+    return lead ? createUnifiedActivityFeed(lead, leadMeetings, leadTasks || [], leadCommunications || []) : [];
+  }, [lead, leadMeetings, leadTasks, leadCommunications]);
+  
+  const leadMetrics = useMemo(() => {
+    return lead ? calculateLeadMetrics(lead, leadActivities) : { interactions: 0, responseTimeHours: 0, salesScore: 0, salesProbability: 0 };
+  }, [lead, leadActivities]);
 
   if (isLoading) {
     return <div className="p-6">טוען...</div>;
@@ -489,7 +681,7 @@ export default function LeadDetails() {
   }
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50">
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-blue-50" dir="rtl">
       {/* Advanced Header */}
       <div className="bg-white border-b border-gray-200 sticky top-0 z-40">
         <div className="px-6 py-4">
@@ -529,29 +721,9 @@ export default function LeadDetails() {
             
             {/* Action Buttons */}
             <div className="flex items-center gap-2">
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="text-purple-600 border-purple-200 hover:bg-purple-50"
-                onClick={() => window.open(`/client-portal/dashboard?leadId=${leadId}`, '_blank')}
-              >
-                <User className="h-4 w-4 ml-2" />
-                צפה כלקוח
-              </Button>
-              <Button 
-                size="sm" 
-                variant="outline" 
-                className="text-blue-600 border-blue-200 hover:bg-blue-50"
-                onClick={() => {
-                  // Generate login link or send login details
-                  toast({ 
-                    title: 'פרטי התחברות נשלחו', 
-                    description: `פרטי התחברות נשלחו ל-${lead.email}` 
-                  });
-                }}
-              >
-                <Send className="h-4 w-4 ml-2" />
-                שלח פרטי התחברות
+              <Button size="sm" className="bg-blue-600 hover:bg-blue-700 text-white" onClick={() => setShowTaskModal(true)}>
+                <CheckCircle className="h-4 w-4 ml-2" />
+                משימה חדשה
               </Button>
               <Button size="sm" className="bg-green-600 hover:bg-green-700 text-white" onClick={() => setShowMeetingModal(true)}>
                 <Calendar className="h-4 w-4 ml-2" />
@@ -696,38 +868,171 @@ export default function LeadDetails() {
 
               {/* Contact Information */}
               <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+                <h3 className="text-lg font-semibold mb-4 flex items-center gap-2 text-right">
                   <User className="h-5 w-5" />
                   פרטי קשר
                 </h3>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                  {lead.email && (
-                    <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-blue-50 to-blue-100 rounded-lg border border-blue-200">
-                      <div className="w-12 h-12 bg-blue-500 rounded-full flex items-center justify-center">
-                        <Mail className="h-6 w-6 text-white" />
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                  {/* Lead ID */}
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                    <User className="h-5 w-5 text-gray-500" />
+                    <div>
+                      <p className="text-xs text-gray-500 text-right">מזהה ליד</p>
+                      <p className="font-medium text-gray-900 text-right">{leadId}</p>
+                    </div>
+                  </div>
+                  
+                  {/* First Name */}
+                  {lead.firstName && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                      <User className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500 text-right">שם פרטי</p>
+                        <p className="font-medium text-gray-900 text-right">{lead.firstName}</p>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-600">אימייל</p>
-                        <p className="font-semibold text-gray-900">{lead.email}</p>
-                        <Button size="sm" variant="outline" className="mt-2" onClick={() => setShowEmailModal(true)}>
-                          <Send className="h-3 w-3 ml-1" />
-                          שלח אימייל
-                        </Button>
+                    </div>
+                  )}
+                  
+                  {/* Last Name */}
+                  {lead.lastName && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                      <User className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500 text-right">שם משפחה</p>
+                        <p className="font-medium text-gray-900 text-right">{lead.lastName}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Business Name */}
+                  {lead.businessName && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                      <Building className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500 text-right">שם העסק</p>
+                        <p className="font-medium text-gray-900 text-right">{lead.businessName}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Business Field */}
+                  {lead.businessField && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                      <Building className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500 text-right">תחום עיסוק</p>
+                        <p className="font-medium text-gray-900 text-right">{lead.businessField}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {lead.email && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                      <Mail className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500 text-right">אימייל</p>
+                        <p className="font-medium text-gray-900 text-right">{lead.email}</p>
                       </div>
                     </div>
                   )}
                   {lead.phone && (
-                    <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-green-50 to-green-100 rounded-lg border border-green-200">
-                      <div className="w-12 h-12 bg-green-500 rounded-full flex items-center justify-center">
-                        <Phone className="h-6 w-6 text-white" />
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                      <Phone className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500 text-right">טלפון</p>
+                        <p className="font-medium text-gray-900 text-right">{lead.phone}</p>
                       </div>
-                      <div className="flex-1">
-                        <p className="text-sm font-medium text-gray-600">טלפון</p>
-                        <p className="font-semibold text-gray-900">{lead.phone}</p>
-                        <Button size="sm" variant="outline" className="mt-2" onClick={() => window.open(`tel:${lead.phone}`, '_blank')}>
-                          <PhoneCall className="h-3 w-3 ml-1" />
-                          התקשר
-                        </Button>
+                    </div>
+                  )}
+                  
+                  {/* Creation Date */}
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                    <Calendar className="h-5 w-5 text-gray-500" />
+                    <div>
+                      <p className="text-xs text-gray-500 text-right">תאריך יצירה</p>
+                      <p className="font-medium text-gray-900 text-right">{new Date(lead.createdAt).toLocaleDateString('he-IL')}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Last Update */}
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                    <Clock className="h-5 w-5 text-gray-500" />
+                    <div>
+                      <p className="text-xs text-gray-500 text-right">עדכון אחרון</p>
+                      <p className="font-medium text-gray-900 text-right">{new Date(lead.updatedAt).toLocaleDateString('he-IL')}</p>
+                    </div>
+                  </div>
+                  
+                  {/* Assigned To */}
+                  {lead.assignedTo && lead.assignedTo !== 'unassigned' && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                      <Users className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500 text-right">מוקצה ל</p>
+                        <p className="font-medium text-gray-900 text-right">{users.find(u => u.id === lead.assignedTo)?.name || lead.assignedTo}</p>
+                      </div>
+                    </div>
+                  )}
+                  
+                  {/* Source */}
+                  <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                    <Globe className="h-5 w-5 text-gray-500" />
+                    <div>
+                      <p className="text-xs text-gray-500 text-right">מקור</p>
+                      <p className="font-medium text-gray-900 text-right">{sourceOptions.find(s => s.value === lead.source)?.label || lead.source}</p>
+                    </div>
+                  </div>
+                  {lead.industry && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                      <Building className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500">תעשייה</p>
+                        <p className="font-medium text-gray-900">{lead.industry}</p>
+                      </div>
+                    </div>
+                  )}
+                  {lead.budget && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                      <DollarSign className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500">תקציב</p>
+                        <p className="font-medium text-gray-900">₪{lead.budget.toLocaleString()}</p>
+                      </div>
+                    </div>
+                  )}
+                  {lead.company && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                      <Building className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500">חברה</p>
+                        <p className="font-medium text-gray-900">{lead.company}</p>
+                      </div>
+                    </div>
+                  )}
+                  {lead.businessNumber && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                      <FileText className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500">מספר עוסק</p>
+                        <p className="font-medium text-gray-900">{lead.businessNumber}</p>
+                      </div>
+                    </div>
+                  )}
+                  {lead.address && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                      <MapPin className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500">כתובת</p>
+                        <p className="font-medium text-gray-900">{lead.address}</p>
+                      </div>
+                    </div>
+                  )}
+                  {lead.city && (
+                    <div className="flex items-center gap-3 p-3 bg-gray-50 rounded-lg border">
+                      <MapPin className="h-5 w-5 text-gray-500" />
+                      <div>
+                        <p className="text-xs text-gray-500">עיר</p>
+                        <p className="font-medium text-gray-900">{lead.city}</p>
                       </div>
                     </div>
                   )}
@@ -775,231 +1080,61 @@ export default function LeadDetails() {
                       </div>
                     </div>
                   )}
-                  <div className="flex items-center gap-4 p-4 bg-gradient-to-r from-orange-50 to-orange-100 rounded-lg border border-orange-200">
-                    <div className="w-12 h-12 bg-orange-500 rounded-full flex items-center justify-center">
-                      <Globe className="h-6 w-6 text-white" />
-                    </div>
-                    <div className="flex-1">
-                      <p className="text-sm font-medium text-gray-600">מקור</p>
-                      <p className="font-semibold text-gray-900">{sourceOptions.find(s => s.value === lead.source)?.label}</p>
-                    </div>
-                  </div>
                 </div>
               </Card>
 
               {/* Notes Section */}
-              {lead.notes && (
-                <Card className="p-6">
-                  <h3 className="text-lg font-semibold mb-4 flex items-center gap-2">
+              <Card className="p-6">
+                <div className="flex items-center justify-between mb-4">
+                  <h3 className="text-lg font-semibold flex items-center gap-2">
                     <FileText className="h-5 w-5" />
                     הערות
                   </h3>
-                  <div className="bg-gradient-to-r from-gray-50 to-blue-50 p-4 rounded-lg border border-gray-200">
-                    <div className="text-gray-700 whitespace-pre-wrap leading-relaxed">
-                      {lead.notes}
-                    </div>
-                  </div>
                   <Button
-                    variant="outline"
+                    size="sm"
                     onClick={() => setShowAddNoteModal(true)}
-                    className="mt-4"
+                    className="bg-blue-600 hover:bg-blue-700"
                   >
-                    <MessageSquare className="h-4 w-4 ml-2" />
+                    <MessageSquare className="h-3 w-3 ml-2" />
                     הוסף הערה
                   </Button>
-                </Card>
-              )}
+                </div>
+                
+                {parseStructuredNotes(lead?.notes || '').length === 0 ? (
+                  <div className="text-center py-6 text-gray-500">
+                    <MessageSquare className="h-8 w-8 mx-auto mb-2 text-gray-300" />
+                    <p className="text-sm">אין הערות עדיין</p>
+                    <p className="text-xs text-gray-400">הוסף את ההערה הראשונה</p>
+                  </div>
+                ) : (
+                  <div className="space-y-4 max-h-96 overflow-y-auto">
+                    {parseStructuredNotes(lead?.notes || '').map((note) => (
+                      <div key={note.id} className="border border-gray-200 rounded-lg p-4 bg-white hover:shadow-sm transition-shadow">
+                        <div className="flex items-start justify-between mb-2">
+                          <div className="flex items-center gap-2">
+                            <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center">
+                              <User className="h-4 w-4 text-blue-600" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-medium text-gray-900">{note.author}</p>
+                              <p className="text-xs text-gray-500">{note.timestamp}</p>
+                            </div>
+                          </div>
+                        </div>
+                        <div className="text-sm text-gray-700 whitespace-pre-wrap leading-relaxed mr-10">
+                          {note.fullContent}
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </Card>
             </div>
 
             {/* Right Sidebar */}
             <div className="space-y-6">
-              {/* Lead Score */}
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">סיכוי מכירה</h3>
-                <div className="space-y-4">
-                  <div className="text-center">
-                    <div className="text-4xl font-bold text-green-600 mb-2">76%</div>
-                    <p className="text-sm text-gray-600">סיכוי להמרה</p>
-                  </div>
-                  
-                  <div className="w-full bg-gray-200 rounded-full h-4">
-                    <div className="bg-gradient-to-r from-green-400 to-green-600 h-4 rounded-full" style={{width: '76%'}}></div>
-                  </div>
-                  
-                  <div className="flex justify-between items-center text-xs text-gray-600">
-                    <span>נמוך</span>
-                    <span>גבוה</span>
-                  </div>
-                </div>
-              </Card>
 
-              {/* Recent Meetings */}
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">פגישות אחרונות</h3>
-                {leadMeetings.length === 0 ? (
-                  <div className="text-center py-6 text-gray-500">
-                    <Calendar className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                    <p className="text-sm">אין פגישות מתוכננות</p>
-                    <Button 
-                      size="sm" 
-                      className="mt-3 bg-green-600 hover:bg-green-700" 
-                      onClick={() => setShowMeetingModal(true)}
-                    >
-                      <Calendar className="h-3 w-3 ml-2" />
-                      קבע פגישה
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {leadMeetings.slice(0, 3).map((meeting) => (
-                      <div key={meeting.id} className="border border-blue-200 bg-blue-50 p-3 rounded-lg">
-                        <div className="flex items-start justify-between">
-                          <div className="flex items-start gap-2">
-                            <div className="w-6 h-6 bg-blue-500 rounded-full flex items-center justify-center mt-0.5">
-                              <Calendar className="h-3 w-3 text-white" />
-                            </div>
-                            <div className="flex-1">
-                              <h4 className="text-sm font-medium text-blue-900">{meeting.title}</h4>
-                              <p className="text-xs text-blue-700 mt-0.5">{meeting.dateTime}</p>
-                            </div>
-                          </div>
-                          <Button 
-                            size="sm" 
-                            variant="ghost" 
-                            className="h-6 px-2 text-xs"
-                            onClick={() => {
-                              const [date, time] = meeting.dateTime.split(' ');
-                              const startDate = new Date(`${date}T${time}`);
-                              const endDate = new Date(startDate.getTime() + 60 * 60000);
-                              const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(meeting.title)}&dates=${startDate.toISOString().replace(/[-:]/g, '').split('.')[0]}Z/${endDate.toISOString().replace(/[-:]/g, '').split('.')[0]}Z&details=${encodeURIComponent('פגישה עם ' + lead.name)}`;
-                              window.open(calendarUrl, '_blank');
-                            }}
-                          >
-                            סנכרן
-                          </Button>
-                        </div>
-                      </div>
-                    ))}
-                    {leadMeetings.length > 3 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="w-full text-blue-600 hover:text-blue-700"
-                        onClick={() => setActiveTab('activities')}
-                      >
-                        הצג עוד ({leadMeetings.length - 3})
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </Card>
 
-              {/* Tasks for this Lead */}
-              <Card className="p-6">
-                <h3 className="text-lg font-semibold mb-4">משימות</h3>
-                {leadTasks.length === 0 ? (
-                  <div className="text-center py-6 text-gray-500">
-                    <CheckCircle className="h-8 w-8 mx-auto mb-2 text-gray-300" />
-                    <p className="text-sm">אין משימות עדיין</p>
-                    <Button 
-                      size="sm" 
-                      className="mt-3" 
-                      onClick={() => setActiveTab('timeline')}
-                    >
-                      הצג כל המשימות
-                    </Button>
-                  </div>
-                ) : (
-                  <div className="space-y-3">
-                    {leadTasks.slice(0, 5).map((task: any) => {
-                      const isCompleted = task.status === 'completed';
-                      const isMeeting = task.type === 'meeting';
-                      const isOverdue = task.dueDate && new Date(task.dueDate) < new Date() && !isCompleted;
-                      
-                      return (
-                        <div key={task.id} className={`border p-3 rounded-lg ${
-                          isCompleted ? 'bg-green-50 border-green-200' :
-                          isOverdue ? 'bg-red-50 border-red-200' :
-                          isMeeting ? 'bg-blue-50 border-blue-200' :
-                          'bg-gray-50 border-gray-200'
-                        }`}>
-                          <div className="flex items-start justify-between">
-                            <div className="flex items-start gap-3">
-                              <div className={`w-6 h-6 rounded-full flex items-center justify-center mt-0.5 ${
-                                isCompleted ? 'bg-green-500' :
-                                isOverdue ? 'bg-red-500' :
-                                isMeeting ? 'bg-blue-500' :
-                                'bg-gray-500'
-                              }`}>
-                                {isMeeting ? (
-                                  <Calendar className="h-3 w-3 text-white" />
-                                ) : (
-                                  <CheckCircle className="h-3 w-3 text-white" />
-                                )}
-                              </div>
-                              <div className="flex-1">
-                                <h4 className={`text-sm font-medium ${
-                                  isCompleted ? 'text-green-900 line-through' :
-                                  isOverdue ? 'text-red-900' :
-                                  isMeeting ? 'text-blue-900' :
-                                  'text-gray-900'
-                                }`}>
-                                  {task.title}
-                                </h4>
-                                {task.description && (
-                                  <p className="text-xs text-gray-600 mt-0.5">{task.description}</p>
-                                )}
-                                <div className="flex items-center gap-2 mt-1 text-xs">
-                                  {task.dueDate && (
-                                    <span className={isOverdue ? 'text-red-600 font-medium' : 'text-gray-500'}>
-                                      {new Date(task.dueDate).toLocaleDateString('he-IL')}
-                                    </span>
-                                  )}
-                                  {task.priority !== 'medium' && (
-                                    <span className={`px-2 py-0.5 rounded text-xs ${
-                                      task.priority === 'urgent' ? 'bg-red-100 text-red-700' :
-                                      task.priority === 'high' ? 'bg-orange-100 text-orange-700' :
-                                      'bg-gray-100 text-gray-700'
-                                    }`}>
-                                      {task.priority === 'urgent' ? 'דחופה' :
-                                       task.priority === 'high' ? 'גבוהה' : 'נמוכה'}
-                                    </span>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                            {isMeeting && task.startTime && (
-                              <Button 
-                                size="sm" 
-                                variant="ghost" 
-                                className="h-6 px-2 text-xs"
-                                onClick={() => {
-                                  const startDate = new Date(task.startTime);
-                                  const endDate = task.endTime ? new Date(task.endTime) : new Date(startDate.getTime() + 60 * 60000);
-                                  const calendarUrl = `https://calendar.google.com/calendar/render?action=TEMPLATE&text=${encodeURIComponent(task.title)}&dates=${startDate.toISOString().replace(/[-:]/g, '').split('.')[0]}Z/${endDate.toISOString().replace(/[-:]/g, '').split('.')[0]}Z&details=${encodeURIComponent(task.description || '')}${task.location ? `&location=${encodeURIComponent(task.location)}` : ''}`;
-                                  window.open(calendarUrl, '_blank');
-                                }}
-                              >
-                                סנכרן
-                              </Button>
-                            )}
-                          </div>
-                        </div>
-                      );
-                    })}
-                    {leadTasks.length > 5 && (
-                      <Button 
-                        variant="ghost" 
-                        size="sm" 
-                        className="w-full text-blue-600 hover:text-blue-700"
-                        onClick={() => window.open('/dashboard/tasks', '_blank')}
-                      >
-                        הצג עוד ({leadTasks.length - 5})
-                      </Button>
-                    )}
-                  </div>
-                )}
-              </Card>
 
               {/* Recent Activity */}
               <Card className="p-6">
@@ -1011,20 +1146,48 @@ export default function LeadDetails() {
                   </div>
                 ) : (
                   <div className="space-y-3">
-                    {leadActivities.slice(0, 4).map((activity) => {
+                    {leadActivities.slice(0, 6).map((activity) => {
                       const IconComponent = activity.icon;
-                      const isMeeting = activity.type === 'meeting_scheduled';
+                      const isMeeting = activity.type === 'meeting';
+                      const isTask = activity.type === 'task';
+                      const isClickable = activity.clickable;
+                      
+                      const handleActivityClick = () => {
+                        if (!isClickable) return;
+                        
+                        if (activity.clickAction === 'task-details') {
+                          // Navigate to tasks page with filter for this task
+                          window.location.href = `/dashboard/tasks?taskId=${activity.data.id}`;
+                        } else if (activity.clickAction === 'meeting-details') {
+                          // Show meeting details in modal or navigate to calendar
+                          alert(`פרטי הפגישה: ${activity.data.title}\nזמן: ${activity.data.dateTime}`);
+                        }
+                      };
+                      
                       return (
-                        <div key={activity.id} className="flex items-start gap-3">
+                        <div 
+                          key={activity.id} 
+                          className={`flex items-start gap-3 p-2 rounded-lg transition-colors ${
+                            isClickable ? 'hover:bg-gray-50 cursor-pointer border border-transparent hover:border-gray-200' : ''
+                          }`}
+                          onClick={handleActivityClick}
+                        >
                           <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
-                            isMeeting ? 'bg-green-100' : 'bg-blue-100'
+                            isMeeting ? 'bg-green-100' : 
+                            isTask ? 'bg-blue-100' : 
+                            'bg-purple-100'
                           }`}>
                             <IconComponent className={`h-4 w-4 ${
-                              isMeeting ? 'text-green-600' : 'text-blue-600'
+                              isMeeting ? 'text-green-600' : 
+                              isTask ? 'text-blue-600' : 
+                              'text-purple-600'
                             }`} />
                           </div>
                           <div className="flex-1">
-                            <p className="text-sm font-medium">{activity.title}</p>
+                            <p className={`text-sm font-medium ${isClickable ? 'text-blue-700' : ''}`}>
+                              {activity.title}
+                              {isClickable && <span className="text-xs text-gray-500 mr-2">← לחץ לפרטים</span>}
+                            </p>
                             <p className="text-xs text-gray-600 mt-0.5">{activity.description}</p>
                             <p className="text-xs text-gray-500 mt-1">
                               {new Date(activity.timestamp).toLocaleDateString('he-IL', {
@@ -1058,29 +1221,184 @@ export default function LeadDetails() {
 
         {activeTab === 'analytics' && (
           <div className="max-w-7xl mx-auto">
-            <Card className="p-6">
-              <h3 className="text-xl font-semibold mb-4">אנליטיקה מתקדמת</h3>
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                <div className="bg-gradient-to-r from-blue-50 to-blue-100 p-6 rounded-lg">
-                  <PieChart className="h-8 w-8 text-blue-600 mb-2" />
-                  <h4 className="font-semibold text-gray-900">התפלגות פעילויות</h4>
-                  <p className="text-sm text-gray-600 mt-2">מיילים: 45% | שיחות: 30% | פגישות: 25%</p>
-                </div>
-                <div className="bg-gradient-to-r from-green-50 to-green-100 p-6 rounded-lg">
-                  <Target className="h-8 w-8 text-green-600 mb-2" />
-                  <h4 className="font-semibold text-gray-900">סיכוי מכירה</h4>
-                  <p className="text-sm text-gray-600 mt-2">76% סיכוי להמרה</p>
-                  <div className="w-full bg-green-200 rounded-full h-2 mt-2">
-                    <div className="bg-green-500 h-2 rounded-full" style={{width: '76%'}}></div>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Lead Score & Metrics */}
+              <Card className="p-6">
+                <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                  <Target className="h-5 w-5 text-green-600" />
+                  ציון ליד ומדדים
+                </h3>
+                <div className="space-y-6">
+                  {/* Lead Score Progress */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">ציון מכירה כללי</span>
+                      <span className="text-2xl font-bold text-green-600">{leadMetrics.salesScore}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div 
+                        className="bg-gradient-to-r from-green-400 to-green-600 h-3 rounded-full transition-all duration-500" 
+                        style={{width: `${leadMetrics.salesScore}%`}}
+                      ></div>
+                    </div>
+                  </div>
+                  
+                  {/* Probability */}
+                  <div>
+                    <div className="flex justify-between items-center mb-2">
+                      <span className="text-sm font-medium text-gray-700">סבירות סגירה</span>
+                      <span className="text-2xl font-bold text-blue-600">{leadMetrics.salesProbability}%</span>
+                    </div>
+                    <div className="w-full bg-gray-200 rounded-full h-3">
+                      <div 
+                        className="bg-gradient-to-r from-blue-400 to-blue-600 h-3 rounded-full transition-all duration-500" 
+                        style={{width: `${leadMetrics.salesProbability}%`}}
+                      ></div>
+                    </div>
+                  </div>
+                  
+                  {/* Response Time */}
+                  <div className="bg-orange-50 p-4 rounded-lg">
+                    <div className="flex items-center gap-3">
+                      <Clock className="h-5 w-5 text-orange-600" />
+                      <div>
+                        <p className="font-medium text-gray-900">זמן תגובה ממוצע</p>
+                        <p className="text-lg text-orange-600 font-bold">
+                          {leadMetrics.responseTimeHours < 1 ? 
+                            `${Math.round(leadMetrics.responseTimeHours * 60)} דקות` : 
+                            `${leadMetrics.responseTimeHours.toFixed(1)} שעות`
+                          }
+                        </p>
+                      </div>
+                    </div>
                   </div>
                 </div>
-                <div className="bg-gradient-to-r from-purple-50 to-purple-100 p-6 rounded-lg">
-                  <Target className="h-8 w-8 text-purple-600 mb-2" />
-                  <h4 className="font-semibold text-gray-900">יעדי המרה</h4>
-                  <p className="text-sm text-gray-600 mt-2">80% מהיעד החודשי</p>
+              </Card>
+
+              {/* Activity Analytics */}
+              <Card className="p-6">
+                <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                  <BarChart3 className="h-5 w-5 text-purple-600" />
+                  ניתוח פעילות
+                </h3>
+                <div className="space-y-4">
+                  {/* Activities Breakdown */}
+                  <div className="grid grid-cols-2 gap-4">
+                    <div className="bg-green-50 p-4 rounded-lg text-center">
+                      <Calendar className="h-6 w-6 text-green-600 mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-green-600">{leadMeetings.length}</div>
+                      <div className="text-sm text-gray-600">פגישות</div>
+                    </div>
+                    <div className="bg-blue-50 p-4 rounded-lg text-center">
+                      <CheckCircle className="h-6 w-6 text-blue-600 mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-blue-600">{leadTasks?.length || 0}</div>
+                      <div className="text-sm text-gray-600">משימות</div>
+                    </div>
+                    <div className="bg-purple-50 p-4 rounded-lg text-center">
+                      <MessageSquare className="h-6 w-6 text-purple-600 mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-purple-600">{leadCommunications?.length || 0}</div>
+                      <div className="text-sm text-gray-600">תקשורת</div>
+                    </div>
+                    <div className="bg-yellow-50 p-4 rounded-lg text-center">
+                      <Activity className="h-6 w-6 text-yellow-600 mx-auto mb-2" />
+                      <div className="text-2xl font-bold text-yellow-600">{leadActivities.length}</div>
+                      <div className="text-sm text-gray-600">פעילויות כולל</div>
+                    </div>
+                  </div>
+                  
+                  {/* Engagement Level */}
+                  <div className="bg-gradient-to-r from-indigo-50 to-blue-50 p-4 rounded-lg">
+                    <div className="flex items-center justify-between">
+                      <div>
+                        <h4 className="font-medium text-gray-900">רמת מעורבות</h4>
+                        <p className="text-sm text-gray-600">מבוסס על תדירות פעילות</p>
+                      </div>
+                      <div className="text-right">
+                        <div className="text-2xl font-bold text-indigo-600">
+                          {leadActivities.length > 10 ? 'גבוהה' : 
+                           leadActivities.length > 5 ? 'בינונית' : 'נמוכה'}
+                        </div>
+                        <div className="text-xs text-gray-500">
+                          {leadActivities.length > 10 ? '🔥 חמה!' : 
+                           leadActivities.length > 5 ? '⚡ פעילה' : '❄️ קרה'}
+                        </div>
+                      </div>
+                    </div>
+                  </div>
                 </div>
-              </div>
-            </Card>
+              </Card>
+
+              {/* Lead Journey Timeline */}
+              <Card className="p-6 lg:col-span-2">
+                <h3 className="text-xl font-semibold mb-4 flex items-center gap-2">
+                  <TrendingUp className="h-5 w-5 text-green-600" />
+                  מסלול הליד במערכת
+                </h3>
+                <div className="space-y-4">
+                  {/* Timeline */}
+                  <div className="relative">
+                    <div className="absolute right-4 top-0 bottom-0 w-0.5 bg-gray-200"></div>
+                    <div className="space-y-6">
+                      {/* Lead Created */}
+                      <div className="relative flex items-center gap-4">
+                        <div className="w-8 h-8 bg-blue-100 rounded-full flex items-center justify-center relative z-10">
+                          <UserPlus className="h-4 w-4 text-blue-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">ליד נוצר במערכת</p>
+                          <p className="text-sm text-gray-500">
+                            {lead?.createdAt ? new Date(lead.createdAt).toLocaleDateString('he-IL') : 'לא ידוע'}
+                          </p>
+                        </div>
+                        <div className="text-sm text-gray-400">מקור: {lead?.source}</div>
+                      </div>
+                      
+                      {/* First Activity */}
+                      {leadActivities.length > 0 && (
+                        <div className="relative flex items-center gap-4">
+                          <div className="w-8 h-8 bg-green-100 rounded-full flex items-center justify-center relative z-10">
+                            <Activity className="h-4 w-4 text-green-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium">פעילות ראשונה</p>
+                            <p className="text-sm text-gray-500">{leadActivities[leadActivities.length - 1]?.title}</p>
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Latest Activity */}
+                      {leadActivities.length > 1 && (
+                        <div className="relative flex items-center gap-4">
+                          <div className="w-8 h-8 bg-purple-100 rounded-full flex items-center justify-center relative z-10">
+                            <Zap className="h-4 w-4 text-purple-600" />
+                          </div>
+                          <div className="flex-1">
+                            <p className="font-medium">פעילות אחרונה</p>
+                            <p className="text-sm text-gray-500">{leadActivities[0]?.title}</p>
+                          </div>
+                          <div className="text-sm text-gray-400">
+                            {new Date(leadActivities[0]?.timestamp).toLocaleDateString('he-IL')}
+                          </div>
+                        </div>
+                      )}
+                      
+                      {/* Current Status */}
+                      <div className="relative flex items-center gap-4">
+                        <div className="w-8 h-8 bg-yellow-100 rounded-full flex items-center justify-center relative z-10">
+                          <Flag className="h-4 w-4 text-yellow-600" />
+                        </div>
+                        <div className="flex-1">
+                          <p className="font-medium">סטטוס נוכחי</p>
+                          <Badge className={`text-xs ${getStatusColor(lead?.status || 'new')}`}>
+                            {getStatusLabel(lead?.status || 'new')}
+                          </Badge>
+                        </div>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            </div>
           </div>
         )}
 
@@ -1162,6 +1480,10 @@ export default function LeadDetails() {
                 <Card className="p-6">
                   <h3 className="text-lg font-semibold mb-4">פעולות מהירות</h3>
                   <div className="space-y-3">
+                    <Button className="w-full justify-start" variant="outline" onClick={() => setShowTaskModal(true)}>
+                      <CheckCircle className="h-4 w-4 ml-2" />
+                      צור משימה חדשה
+                    </Button>
                     <Button className="w-full justify-start" variant="outline" onClick={() => setShowMeetingModal(true)}>
                       <Calendar className="h-4 w-4 ml-2" />
                       קבע פגישה חדשה
@@ -1202,70 +1524,64 @@ export default function LeadDetails() {
                   </div>
                   
                   <div className="space-y-4">
-                    <div className="border border-blue-200 bg-blue-50 p-4 rounded-lg">
-                      <div className="flex items-start justify-between">
-                        <div className="flex items-start gap-3">
-                          <div className="w-8 h-8 bg-blue-500 rounded-full flex items-center justify-center">
-                            <Mail className="h-4 w-4 text-white" />
-                          </div>
-                          <div>
-                            <h4 className="font-medium">אימייל - הצעת מחיר נשלחה</h4>
-                            <p className="text-sm text-gray-600 mt-1">
-                              נושא: הצעת מחיר לפרויקט דיגיטלי<br/>
-                              תוכן: שלום {lead.name}, מצורף הצעת מחיר מפורטת...
-                            </p>
-                            <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                              <span>נשלח: היום, 14:30</span>
-                              <span>•</span>
-                              <span className="text-green-600">נקרא</span>
+                    {leadCommunications.length === 0 ? (
+                      <div className="text-center py-8 text-gray-500">
+                        אין היסטוריית תקשורת להצגה
+                      </div>
+                    ) : (
+                      leadCommunications.map((activity: any) => (
+                        <div key={activity.id} className={`border rounded-lg p-4 ${
+                          activity.type === 'email' ? 'border-blue-200 bg-blue-50' :
+                          activity.type === 'call' ? 'border-green-200 bg-green-50' :
+                          activity.type === 'meeting' ? 'border-purple-200 bg-purple-50' :
+                          'border-gray-200 bg-gray-50'
+                        }`}>
+                          <div className="flex items-start justify-between">
+                            <div className="flex items-start gap-3">
+                              <div className={`w-8 h-8 rounded-full flex items-center justify-center ${
+                                activity.type === 'email' ? 'bg-blue-500' :
+                                activity.type === 'call' ? 'bg-green-500' :
+                                activity.type === 'meeting' ? 'bg-purple-500' :
+                                'bg-gray-500'
+                              }`}>
+                                {activity.type === 'email' && <Mail className="h-4 w-4 text-white" />}
+                                {activity.type === 'call' && <PhoneCall className="h-4 w-4 text-white" />}
+                                {activity.type === 'meeting' && <Video className="h-4 w-4 text-white" />}
+                              </div>
+                              <div>
+                                <h4 className="font-medium">
+                                  {activity.type === 'email' && `אימייל - ${activity.subject}`}
+                                  {activity.type === 'call' && `שיחת טלפון - ${activity.subject}`}
+                                  {activity.type === 'meeting' && `פגישה - ${activity.subject}`}
+                                </h4>
+                                <p className="text-sm text-gray-600 mt-1">
+                                  {activity.type === 'call' && activity.duration && `משך: ${activity.duration} דקות | `}
+                                  {activity.type === 'meeting' && activity.location && `מיקום: ${activity.location} | `}
+                                  <br/>
+                                  {activity.content}
+                                </p>
+                                <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
+                                  <span>{new Date(activity.sentAt).toLocaleDateString('he-IL', {
+                                    year: 'numeric',
+                                    month: 'short',
+                                    day: 'numeric',
+                                    hour: '2-digit',
+                                    minute: '2-digit'
+                                  })}</span>
+                                  <span>•</span>
+                                  <span className={activity.status === 'read' ? 'text-green-600' : 'text-blue-600'}>
+                                    {activity.status === 'read' ? 'נקרא' : 'נשלח'}
+                                  </span>
+                                </div>
+                              </div>
                             </div>
+                            <Button variant="ghost" size="sm">
+                              <Edit className="h-3 w-3" />
+                            </Button>
                           </div>
                         </div>
-                        <Button variant="ghost" size="sm">
-                          <Edit className="h-3 w-3" />
-                        </Button>
-                      </div>
-                    </div>
-                    
-                    <div className="border border-green-200 bg-green-50 p-4 rounded-lg">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-green-500 rounded-full flex items-center justify-center">
-                          <PhoneCall className="h-4 w-4 text-white" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium">שיחת טלפון - ייעוץ ראשוני</h4>
-                          <p className="text-sm text-gray-600 mt-1">
-                            משך: 25 דקות | איכות קשר: מעולה<br/>
-                            תוכן: דיון על צרכי הלקוח ודרישות הפרויקט
-                          </p>
-                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                            <span>אתמול, 10:15</span>
-                            <span>•</span>
-                            <span className="text-blue-600">הוקלט</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="border border-purple-200 bg-purple-50 p-4 rounded-lg">
-                      <div className="flex items-start gap-3">
-                        <div className="w-8 h-8 bg-purple-500 rounded-full flex items-center justify-center">
-                          <Video className="h-4 w-4 text-white" />
-                        </div>
-                        <div>
-                          <h4 className="font-medium">פגישת זום - הצגת פתרונות</h4>
-                          <p className="text-sm text-gray-600 mt-1">
-                            משך: 45 דקות | משתתפים: 3<br/>
-                            תוכן: הצגת פתרונות טכנולוגיים ודמו של המערכת
-                          </p>
-                          <div className="flex items-center gap-4 mt-2 text-xs text-gray-500">
-                            <span>לפני 3 ימים, 16:00</span>
-                            <span>•</span>
-                            <span className="text-green-600">הושלמה בהצלחה</span>
-                          </div>
-                        </div>
-                      </div>
-                    </div>
+                      ))
+                    )}
                   </div>
                 </Card>
               </div>
@@ -1277,15 +1593,21 @@ export default function LeadDetails() {
                   <div className="space-y-4">
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">אימיילים נשלחו</span>
-                      <span className="font-bold text-blue-600">12</span>
+                      <span className="font-bold text-blue-600">
+                        {leadCommunications.filter(a => a.type === 'email').length}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">שיחות טלפון</span>
-                      <span className="font-bold text-green-600">8</span>
+                      <span className="font-bold text-green-600">
+                        {leadCommunications.filter(a => a.type === 'call').length}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">פגישות</span>
-                      <span className="font-bold text-purple-600">3</span>
+                      <span className="font-bold text-purple-600">
+                        {leadCommunications.filter(a => a.type === 'meeting').length}
+                      </span>
                     </div>
                     <div className="flex justify-between items-center">
                       <span className="text-sm text-gray-600">זמן מענה ממוצע</span>
@@ -1562,12 +1884,45 @@ export default function LeadDetails() {
               <h3 className="text-lg font-semibold text-right mb-4 border-b pb-2">פרטים בסיסיים</h3>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div className="space-y-2">
-                  <Label htmlFor="name" className="text-base font-medium">שם מלא *</Label>
+                  <Label htmlFor="firstName" className="text-base font-medium">שם פרטי *</Label>
                   <Input
-                    id="name"
-                    value={leadForm.name}
-                    onChange={(e) => setLeadForm({...leadForm, name: e.target.value})}
-                    placeholder="הכנס שם מלא"
+                    id="firstName"
+                    value={leadForm.firstName}
+                    onChange={(e) => setLeadForm({...leadForm, firstName: e.target.value})}
+                    placeholder="שם פרטי"
+                    className="text-right h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="lastName" className="text-base font-medium">שם משפחה</Label>
+                  <Input
+                    id="lastName"
+                    value={leadForm.lastName}
+                    onChange={(e) => setLeadForm({...leadForm, lastName: e.target.value})}
+                    placeholder="שם משפחה"
+                    className="text-right h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="businessName" className="text-base font-medium">שם העסק</Label>
+                  <Input
+                    id="businessName"
+                    value={leadForm.businessName}
+                    onChange={(e) => setLeadForm({...leadForm, businessName: e.target.value})}
+                    placeholder="שם העסק"
+                    className="text-right h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="businessField" className="text-base font-medium">תחום עיסוק</Label>
+                  <Input
+                    id="businessField"
+                    value={leadForm.businessField}
+                    onChange={(e) => setLeadForm({...leadForm, businessField: e.target.value})}
+                    placeholder="תחום עיסוק"
                     className="text-right h-11"
                   />
                 </div>
@@ -1683,6 +2038,79 @@ export default function LeadDetails() {
               </div>
             </div>
 
+            {/* Business Information Section */}
+            <div>
+              <h3 className="text-lg font-semibold text-right mb-4 border-b pb-2">פרטי עסק</h3>
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                  <Label htmlFor="company" className="text-base font-medium">שם החברה</Label>
+                  <Input
+                    id="company"
+                    value={leadForm.company || ''}
+                    onChange={(e) => setLeadForm({...leadForm, company: e.target.value})}
+                    placeholder="שם החברה"
+                    className="text-right h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="industry" className="text-base font-medium">תעשייה</Label>
+                  <Input
+                    id="industry"
+                    value={leadForm.industry || ''}
+                    onChange={(e) => setLeadForm({...leadForm, industry: e.target.value})}
+                    placeholder="תעשייה"
+                    className="text-right h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="businessNumber" className="text-base font-medium">מספר עוסק</Label>
+                  <Input
+                    id="businessNumber"
+                    value={leadForm.businessNumber || ''}
+                    onChange={(e) => setLeadForm({...leadForm, businessNumber: e.target.value})}
+                    placeholder="מספר עוסק מורשה"
+                    className="text-right h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="budget" className="text-base font-medium">תקציב צפוי (₪)</Label>
+                  <Input
+                    id="budget"
+                    type="number"
+                    value={leadForm.budget || ''}
+                    onChange={(e) => setLeadForm({...leadForm, budget: Number(e.target.value)})}
+                    placeholder="תקציב צפוי"
+                    className="text-right h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="address" className="text-base font-medium">כתובת</Label>
+                  <Input
+                    id="address"
+                    value={leadForm.address || ''}
+                    onChange={(e) => setLeadForm({...leadForm, address: e.target.value})}
+                    placeholder="כתובת מלאה"
+                    className="text-right h-11"
+                  />
+                </div>
+
+                <div className="space-y-2">
+                  <Label htmlFor="city" className="text-base font-medium">עיר</Label>
+                  <Input
+                    id="city"
+                    value={leadForm.city || ''}
+                    onChange={(e) => setLeadForm({...leadForm, city: e.target.value})}
+                    placeholder="עיר"
+                    className="text-right h-11"
+                  />
+                </div>
+              </div>
+            </div>
+
             {/* Notes Section */}
             <div>
               <h3 className="text-lg font-semibold text-right mb-4 border-b pb-2">הערות</h3>
@@ -1711,6 +2139,10 @@ export default function LeadDetails() {
                 // Clean the form data - convert numbers properly
                 const cleanedForm = {
                   name: leadForm.name?.toString() || '',
+                  firstName: leadForm.firstName?.toString() || '',
+                  lastName: leadForm.lastName?.toString() || '',
+                  businessName: leadForm.businessName?.toString() || '',
+                  businessField: leadForm.businessField?.toString() || '',
                   email: leadForm.email?.toString() || '',
                   phone: leadForm.phone?.toString() || '',
                   source: leadForm.source?.toString() || 'website',
@@ -1855,20 +2287,49 @@ export default function LeadDetails() {
               ביטול
             </Button>
             <Button
-              onClick={() => {
-                const subject = encodeURIComponent(emailForm.subject);
-                const body = encodeURIComponent(emailForm.body);
-                window.open(`mailto:${lead.email}?subject=${subject}&body=${body}`, '_blank');
-                
-                // Send notification for email sent
-                notifyEmailSent(lead.name, lead.id, 'אתה');
-                
-                setShowEmailModal(false);
-                setEmailForm({ subject: "", body: "" });
-                toast({
-                  title: "אימייל נשלח",
-                  description: "אימייל נשלח בהצלחה"
-                });
+              onClick={async () => {
+                try {
+                  const response = await fetch('/api/send-email', {
+                    method: 'POST',
+                    headers: {
+                      'Content-Type': 'application/json',
+                    },
+                    credentials: 'include',
+                    body: JSON.stringify({
+                      to: lead.email,
+                      subject: emailForm.subject,
+                      body: emailForm.body,
+                      leadId: lead.id
+                    }),
+                  });
+
+                  const result = await response.json();
+
+                  if (response.ok && result.success) {
+                    // Send notification for email sent
+                    notifyEmailSent(lead.name, lead.id, 'אתה');
+                    
+                    setShowEmailModal(false);
+                    setEmailForm({ subject: "", body: "" });
+                    toast({
+                      title: "אימייל נשלח בהצלחה",
+                      description: result.message || "אימייל נשלח בהצלחה"
+                    });
+                  } else {
+                    toast({
+                      title: "שגיאה בשליחת אימייל",
+                      description: result.message || "אנא נסה שוב מאוחר יותר",
+                      variant: "destructive",
+                    });
+                  }
+                } catch (error) {
+                  console.error('Error sending email:', error);
+                  toast({
+                    title: "שגיאה בשליחת אימייל",
+                    description: "אנא נסה שוב מאוחר יותר",
+                    variant: "destructive",
+                  });
+                }
               }}
               disabled={!emailForm.subject.trim() || !emailForm.body.trim()}
               className="bg-blue-600 hover:bg-blue-700"
@@ -1879,6 +2340,13 @@ export default function LeadDetails() {
           </DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Task Modal */}
+      <NewTaskModal
+        isOpen={showTaskModal}
+        onClose={() => setShowTaskModal(false)}
+        leadId={leadId}
+      />
 
       {/* Meeting Modal */}
       <Dialog open={showMeetingModal} onOpenChange={setShowMeetingModal}>

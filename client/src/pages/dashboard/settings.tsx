@@ -90,7 +90,7 @@ export default function Settings() {
   });
 
   return (
-    <div className={cn("container mx-auto py-6 space-y-6 max-w-7xl", rtlClass())}>
+    <div className={cn("container mx-auto py-6 space-y-6 max-w-7xl", rtlClass())} dir="rtl">
       <div className="flex items-center justify-between">
         <div>
           <h1 className="text-3xl font-bold tracking-tight">הגדרות</h1>

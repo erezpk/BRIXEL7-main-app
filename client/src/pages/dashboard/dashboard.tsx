@@ -249,7 +249,7 @@ export default function Dashboard() {
   ];
 
   return (
-    <div className="space-y-6" data-testid="dashboard-page">
+    <div className="space-y-6" data-testid="dashboard-page" dir="rtl">
       {/* Welcome Section */}
       <div className="mb-8">
         <h1 className="text-3xl font-bold text-gray-900 mb-2 font-rubik" data-testid="dashboard-welcome">

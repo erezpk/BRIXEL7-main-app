@@ -28,7 +28,8 @@ import {
   Calendar,
   MessageCircle,
   User,
-  DollarSign
+  DollarSign,
+  Contact
 } from "lucide-react";
 import { cn } from "@/lib/utils";
 import { useState } from "react";
@@ -49,6 +50,7 @@ const navigation = [
     subItems: [
       { name: "לידים", href: "/dashboard/leads", icon: UserPlus },
       { name: "לקוחות", href: "/dashboard/clients", icon: Users },
+      { name: "אנשי קשר", href: "/dashboard/contacts", icon: Contact },
     ]
   },
   { 
